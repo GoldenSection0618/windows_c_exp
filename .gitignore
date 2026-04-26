@@ -37,9 +37,19 @@ m4/
 .idea/
 .vscode/
 .vs/
+x64/
+Debug/
+Release/
+*.user
+*.VC.db
+*.suo
+*.ipch
+*.log
 
 # Runtime data
-data/cards.txt
-data/billings.txt
-data/money.txt
-data/card.bin
+C_PROGRAM_EXPERIMENT/data/*.txt
+!C_PROGRAM_EXPERIMENT/data/.gitkeep
+C_PROGRAM_EXPERIMENT/data/cards.txt
+C_PROGRAM_EXPERIMENT/data/billings.txt
+C_PROGRAM_EXPERIMENT/data/money.txt
+C_PROGRAM_EXPERIMENT/data/card.bin

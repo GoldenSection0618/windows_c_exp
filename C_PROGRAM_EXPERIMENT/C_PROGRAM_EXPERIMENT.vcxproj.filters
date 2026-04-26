@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="源文件">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="头文件">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="资源文件">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="项目文件">
+      <UniqueIdentifier>{A1111111-1111-1111-1111-111111111111}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="脚本">
+      <UniqueIdentifier>{B2222222-2222-2222-2222-222222222222}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\main.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="src\business\billing_rule.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="src\business\billing_service.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="src\business\card_validator.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="src\business\operation_log.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="src\business\time_validator.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="src\data\billing_repository.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="src\data\money_repository.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="src\data\repository.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="src\platform\platform.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="src\presentation\card_ui.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="src\presentation\card_view.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="src\presentation\menu.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include\billing_query_repository.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\billing_repository.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\billing_rule.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\billing_storage.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\billing_storage_file.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\business.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\card_repository.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\card_storage.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\card_storage_file.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\card_ui.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\card_validator.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\card_view.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\common.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\menu.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\model.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\money_repository.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\money_storage.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\money_storage_file.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\operation_log.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\platform.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\time_validator.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Makefile">
+      <Filter>项目文件</Filter>
+    </None>
+    <None Include="data\.gitkeep">
+      <Filter>项目文件</Filter>
+    </None>
+    <None Include="scripts\run_smoke_test.sh">
+      <Filter>脚本</Filter>
+    </None>
+    <None Include="scripts\run_smoke_test.ps1">
+      <Filter>脚本</Filter>
+    </None>
+    <None Include="scripts\run_test_batch.sh">
+      <Filter>脚本</Filter>
+    </None>
+    <None Include="scripts\run_test_batch.ps1">
+      <Filter>脚本</Filter>
+    </None>
+    <None Include="tests\windows\Run-AcceptanceTests.ps1">
+      <Filter>脚本</Filter>
+    </None>
+  </ItemGroup>
+</Project>
