@@ -25,6 +25,10 @@ DataResult dataQueryCardsByKeyword(const char *keyword,
                                    size_t capacity,
                                    size_t *actualCount,
                                    size_t *requiredCount);
+DataResult dataQueryAllCards(Card *outCards,
+                             size_t capacity,
+                             size_t *actualCount,
+                             size_t *requiredCount);
 int dataCardExists(const char *cardName);
 void dataCleanup(void);
 
