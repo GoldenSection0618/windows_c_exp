@@ -41,17 +41,9 @@ int billingRuleCalculateAmount(time_t tStart,
         durationSeconds = tEnd - tStart;
     }
 
-    *durationMinutes = (int)((durationSeconds + 59) / 60);
-    if (*durationMinutes < 1) {
-        *durationMinutes = 1;
-    }
+    *durationMinutes = (int)durationSeconds;
 
-    roundedUnits = (*durationMinutes + unitMinutes - 1) / unitMinutes;
-    if (roundedUnits < 1) {
-        roundedUnits = 1;
-    }
-
-    computedAmount = (int64_t)roundedUnits * (int64_t)rate->nChargeCent;
+    computedAmount = (int64_t)durationSeconds * 100;
     if (computedAmount < 0 || computedAmount > INT32_MAX) {
         return -1;
     }
