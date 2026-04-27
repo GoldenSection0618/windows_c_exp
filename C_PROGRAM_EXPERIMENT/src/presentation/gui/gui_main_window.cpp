@@ -28,7 +28,125 @@ enum class GuiFeature {
 struct GuiState {
     GuiFeature feature;
     HWND listHandle;
+    HWND navBackgroundHandle;
+    bool layoutInitialized;
+    int navLeft;
+    int navTop;
+    int navWidth;
+    int navBottomMargin;
+    int statusLeft;
+    int statusTop;
+    int statusHeight;
+    int statusRightMargin;
+    int listLeft;
+    int listTop;
+    int listRightMargin;
+    int listBottomMargin;
 };
+
+static RECT GetControlRectInClient(HWND dialog, HWND control)
+{
+    RECT rect = {0};
+    GetWindowRect(control, &rect);
+    MapWindowPoints(nullptr, dialog, reinterpret_cast<LPPOINT>(&rect), 2);
+    return rect;
+}
+
+static HWND FindNavBackgroundControl(HWND dialog)
+{
+    HWND child = GetWindow(dialog, GW_CHILD);
+    while (child != nullptr) {
+        wchar_t className[16] = {0};
+        LONG_PTR style = 0;
+        GetClassNameW(child, className, static_cast<int>(sizeof(className) / sizeof(className[0])));
+        style = GetWindowLongPtrW(child, GWL_STYLE);
+        if (lstrcmpiW(className, L"Static") == 0 && (style & SS_TYPEMASK) == SS_GRAYFRAME) {
+            return child;
+        }
+        child = GetWindow(child, GW_HWNDNEXT);
+    }
+    return nullptr;
+}
+
+static int MaxInt(int value, int minValue)
+{
+    return value < minValue ? minValue : value;
+}
+
+static void InitializeLayoutMetrics(HWND dialog, GuiState *state)
+{
+    RECT clientRect = {0};
+    RECT navRect = {0};
+    RECT statusRect = {0};
+    RECT listRect = {0};
+    HWND statusHandle = GetDlgItem(dialog, IDC_AMS_STATUS_TEXT);
+
+    if (state == nullptr || state->layoutInitialized) {
+        return;
+    }
+
+    state->navBackgroundHandle = FindNavBackgroundControl(dialog);
+    if (state->navBackgroundHandle == nullptr || statusHandle == nullptr || state->listHandle == nullptr) {
+        return;
+    }
+
+    GetClientRect(dialog, &clientRect);
+    navRect = GetControlRectInClient(dialog, state->navBackgroundHandle);
+    statusRect = GetControlRectInClient(dialog, statusHandle);
+    listRect = GetControlRectInClient(dialog, state->listHandle);
+
+    state->navLeft = navRect.left;
+    state->navTop = navRect.top;
+    state->navWidth = navRect.right - navRect.left;
+    state->navBottomMargin = clientRect.bottom - navRect.bottom;
+
+    state->statusLeft = statusRect.left;
+    state->statusTop = statusRect.top;
+    state->statusHeight = statusRect.bottom - statusRect.top;
+    state->statusRightMargin = clientRect.right - statusRect.right;
+
+    state->listLeft = listRect.left;
+    state->listTop = listRect.top;
+    state->listRightMargin = clientRect.right - listRect.right;
+    state->listBottomMargin = clientRect.bottom - listRect.bottom;
+
+    state->layoutInitialized = true;
+}
+
+static void UpdateMainLayout(HWND dialog, GuiState *state, int clientWidth, int clientHeight)
+{
+    HWND statusHandle = nullptr;
+    int navHeight = 0;
+    int statusWidth = 0;
+    int listWidth = 0;
+    int listHeight = 0;
+
+    if (state == nullptr) {
+        return;
+    }
+
+    if (!state->layoutInitialized) {
+        InitializeLayoutMetrics(dialog, state);
+    }
+
+    if (!state->layoutInitialized) {
+        return;
+    }
+
+    statusHandle = GetDlgItem(dialog, IDC_AMS_STATUS_TEXT);
+    if (statusHandle == nullptr || state->listHandle == nullptr || state->navBackgroundHandle == nullptr) {
+        return;
+    }
+
+    navHeight = MaxInt(clientHeight - state->navTop - state->navBottomMargin, 80);
+    statusWidth = MaxInt(clientWidth - state->statusLeft - state->statusRightMargin, 120);
+    listWidth = MaxInt(clientWidth - state->listLeft - state->listRightMargin, 200);
+    listHeight = MaxInt(clientHeight - state->listTop - state->listBottomMargin, 120);
+
+    MoveWindow(state->navBackgroundHandle, state->navLeft, state->navTop, state->navWidth, navHeight, TRUE);
+    MoveWindow(statusHandle, state->statusLeft, state->statusTop, statusWidth, state->statusHeight, TRUE);
+    MoveWindow(state->listHandle, state->listLeft, state->listTop, listWidth, listHeight, TRUE);
+}
 
 static std::wstring ReadControlText(HWND dialog, int controlId)
 {
@@ -512,8 +630,20 @@ static INT_PTR CALLBACK MainDialogProc(HWND dialog, UINT message, WPARAM wParam,
 
         ListView_SetExtendedListViewStyle(listHandle, LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_DOUBLEBUFFER);
         SwitchFeature(dialog, initState, GuiFeature::AddCard);
+        InitializeLayoutMetrics(dialog, initState);
+        {
+            RECT clientRect = {0};
+            GetClientRect(dialog, &clientRect);
+            UpdateMainLayout(dialog, initState, clientRect.right - clientRect.left, clientRect.bottom - clientRect.top);
+        }
         return TRUE;
     }
+    case WM_SIZE:
+        if (state == nullptr || wParam == SIZE_MINIMIZED) {
+            return TRUE;
+        }
+        UpdateMainLayout(dialog, state, LOWORD(lParam), HIWORD(lParam));
+        return TRUE;
     case WM_COMMAND:
         if (state == nullptr) {
             return FALSE;
