@@ -3,23 +3,29 @@
 
 #include <windows.h>
 
-enum class GuiFeature {
-    AddCard,
-    QueryCard,
-    Logon,
-    Settle,
-    Recharge,
-    Refund,
-    CancelCard,
-    Billing,
-    Statistics
+#include "business.h"
+
+enum class GuiMode {
+    AuthAdmin,
+    AuthUserLogin,
+    AuthRegister,
+    AdminQuery,
+    AdminStop,
+    AdminRecharge,
+    AdminRefund,
+    AdminStatistics,
+    UserBalance,
+    UserStart,
+    UserStop,
+    UserRecharge,
+    UserRefund,
+    UserCancel
 };
 
 struct GuiState {
-    GuiFeature feature;
+    LoginSession session;
+    GuiMode mode;
     HWND listHandle;
-    HWND navBackgroundHandle;
-    bool layoutInitialized;
 };
 
 int DialogUnitToPixelX(HWND dialog, int value);

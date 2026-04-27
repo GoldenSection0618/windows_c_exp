@@ -5,35 +5,12 @@
 #include "gui_utils.h"
 
 #include <commctrl.h>
-#include <time.h>
+#include <windows.h>
 
-#include <array>
 #include <string>
 #include <vector>
 
 #pragma comment(lib, "Comctl32.lib")
-
-static HWND FindNavBackgroundControl(HWND dialog)
-{
-    HWND child = GetWindow(dialog, GW_CHILD);
-    while (child != nullptr) {
-        wchar_t className[16] = {0};
-        LONG_PTR style = 0;
-        GetClassNameW(child, className, static_cast<int>(sizeof(className) / sizeof(className[0])));
-        style = GetWindowLongPtrW(child, GWL_STYLE);
-        if (lstrcmpiW(className, L"Static") == 0 && (style & SS_TYPEMASK) == SS_GRAYFRAME) {
-            return child;
-        }
-        child = GetWindow(child, GW_HWNDNEXT);
-    }
-    return nullptr;
-}
-
-static int MaxInt(int value, int minValue)
-{
-    return value < minValue ? minValue : value;
-}
-
 int DialogUnitToPixelX(HWND dialog, int value)
 {
     RECT rect = {0, 0, value, 0};
@@ -48,175 +25,43 @@ int DialogUnitToPixelY(HWND dialog, int value)
     return rect.bottom;
 }
 
-static void MoveControlDlu(HWND dialog, int controlId, int x, int y, int width, int height)
-{
-    HWND control = GetDlgItem(dialog, controlId);
-    if (control == nullptr) {
-        return;
-    }
-
-    MoveWindow(control,
-        DialogUnitToPixelX(dialog, x),
-        DialogUnitToPixelY(dialog, y),
-        DialogUnitToPixelX(dialog, width),
-        DialogUnitToPixelY(dialog, height),
-        TRUE);
-}
-
-static void InitializeLayoutMetrics(HWND dialog, GuiState *state)
-{
-    if (state == nullptr || state->layoutInitialized) {
-        return;
-    }
-
-    state->navBackgroundHandle = FindNavBackgroundControl(dialog);
-    if (state->navBackgroundHandle == nullptr || state->listHandle == nullptr) {
-        return;
-    }
-
-    state->layoutInitialized = true;
-}
-
-static void UpdateMainLayout(HWND dialog, GuiState *state, int clientWidth, int clientHeight)
-{
-    if (state == nullptr) {
-        return;
-    }
-
-    if (!state->layoutInitialized) {
-        InitializeLayoutMetrics(dialog, state);
-    }
-
-    if (!state->layoutInitialized) {
-        return;
-    }
-
-    HWND label1Handle = GetDlgItem(dialog, IDC_AMS_LABEL_1);
-    HWND cardNameHandle = GetDlgItem(dialog, IDC_AMS_CARD_NAME);
-    HWND label2Handle = GetDlgItem(dialog, IDC_AMS_LABEL_2);
-    HWND cardPasswordHandle = GetDlgItem(dialog, IDC_AMS_CARD_PASSWORD);
-    HWND label3Handle = GetDlgItem(dialog, IDC_AMS_LABEL_3);
-    HWND cardMoneyHandle = GetDlgItem(dialog, IDC_AMS_CARD_MONEY);
-    HWND submitHandle = GetDlgItem(dialog, IDC_AMS_SUBMIT);
-    HWND statusHandle = GetDlgItem(dialog, IDC_AMS_STATUS_TEXT);
-
-    if (label1Handle == nullptr || cardNameHandle == nullptr ||
-        label2Handle == nullptr || cardPasswordHandle == nullptr ||
-        label3Handle == nullptr || cardMoneyHandle == nullptr ||
-        submitHandle == nullptr || statusHandle == nullptr ||
-        state->listHandle == nullptr || state->navBackgroundHandle == nullptr) {
-        return;
-    }
-
-    const int navX = DialogUnitToPixelX(dialog, 6);
-    const int navY = DialogUnitToPixelY(dialog, 6);
-    const int navWidth = DialogUnitToPixelX(dialog, 120);
-    const int navBottomMargin = DialogUnitToPixelY(dialog, 6);
-
-    const int navButtonX = 16;
-    const int navButtonWidth = 100;
-    const int navButtonHeight = 24;
-
-    const int contentGap = DialogUnitToPixelX(dialog, 14);
-    const int rightMargin = DialogUnitToPixelX(dialog, 30);
-    const int rowGap = DialogUnitToPixelX(dialog, 10);
-    const int contentX = navX + navWidth + contentGap;
-
-    const int labelY = DialogUnitToPixelY(dialog, 20);
-    const int labelHeight = DialogUnitToPixelY(dialog, 16);
-    const int editY = DialogUnitToPixelY(dialog, 38);
-    const int editHeight = DialogUnitToPixelY(dialog, 24);
-
-    const int submitY = DialogUnitToPixelY(dialog, 72);
-    const int submitWidth = DialogUnitToPixelX(dialog, 80);
-    const int submitHeight = DialogUnitToPixelY(dialog, 26);
-
-    const int statusY = DialogUnitToPixelY(dialog, 78);
-    const int statusHeight = DialogUnitToPixelY(dialog, 20);
-
-    const int listY = DialogUnitToPixelY(dialog, 110);
-    const int listBottomMargin = DialogUnitToPixelY(dialog, 10);
-
-    int contentWidth = MaxInt(clientWidth - contentX - rightMargin, DialogUnitToPixelX(dialog, 260));
-    int columnWidth = MaxInt((contentWidth - rowGap * 2) / 3, DialogUnitToPixelX(dialog, 70));
-
-    int columnX1 = contentX;
-    int columnX2 = columnX1 + columnWidth + rowGap;
-    int columnX3 = columnX2 + columnWidth + rowGap;
-
-    int submitX = contentX;
-    int statusX = submitX + submitWidth + rowGap;
-    int statusWidth = MaxInt(contentX + contentWidth - statusX, DialogUnitToPixelX(dialog, 120));
-
-    int navHeight = MaxInt(clientHeight - navY - navBottomMargin, DialogUnitToPixelY(dialog, 80));
-    int listHeight = MaxInt(clientHeight - listY - listBottomMargin, DialogUnitToPixelY(dialog, 120));
-
-    MoveWindow(state->navBackgroundHandle, navX, navY, navWidth, navHeight, TRUE);
-
-    MoveControlDlu(dialog, IDC_AMS_NAV_ADD_CARD, navButtonX, 18, navButtonWidth, navButtonHeight);
-    MoveControlDlu(dialog, IDC_AMS_NAV_QUERY_CARD, navButtonX, 50, navButtonWidth, navButtonHeight);
-    MoveControlDlu(dialog, IDC_AMS_NAV_LOGON, navButtonX, 82, navButtonWidth, navButtonHeight);
-    MoveControlDlu(dialog, IDC_AMS_NAV_SETTLE, navButtonX, 114, navButtonWidth, navButtonHeight);
-    MoveControlDlu(dialog, IDC_AMS_NAV_RECHARGE, navButtonX, 146, navButtonWidth, navButtonHeight);
-    MoveControlDlu(dialog, IDC_AMS_NAV_REFUND, navButtonX, 178, navButtonWidth, navButtonHeight);
-    MoveControlDlu(dialog, IDC_AMS_NAV_CANCEL_CARD, navButtonX, 210, navButtonWidth, navButtonHeight);
-    MoveControlDlu(dialog, IDC_AMS_NAV_BILLING, navButtonX, 242, navButtonWidth, navButtonHeight);
-    MoveControlDlu(dialog, IDC_AMS_NAV_STAT, navButtonX, 274, navButtonWidth, navButtonHeight);
-    MoveControlDlu(dialog, IDC_AMS_NAV_EXIT, navButtonX, 306, navButtonWidth, navButtonHeight);
-
-    MoveWindow(label1Handle, columnX1, labelY, columnWidth, labelHeight, TRUE);
-    MoveWindow(cardNameHandle, columnX1, editY, columnWidth, editHeight, TRUE);
-    MoveWindow(label2Handle, columnX2, labelY, columnWidth, labelHeight, TRUE);
-    MoveWindow(cardPasswordHandle, columnX2, editY, columnWidth, editHeight, TRUE);
-    MoveWindow(label3Handle, columnX3, labelY, columnWidth, labelHeight, TRUE);
-    MoveWindow(cardMoneyHandle, columnX3, editY, columnWidth, editHeight, TRUE);
-
-    MoveWindow(submitHandle, submitX, submitY, submitWidth, submitHeight, TRUE);
-    MoveWindow(statusHandle, statusX, statusY, statusWidth, statusHeight, TRUE);
-    MoveWindow(state->listHandle, contentX, listY, contentWidth, listHeight, TRUE);
-}
-
-static std::wstring ReadControlText(HWND dialog, int controlId)
+static std::wstring ReadText(HWND dialog, int controlId)
 {
     wchar_t buffer[256] = {0};
     GetDlgItemTextW(dialog, controlId, buffer, static_cast<int>(sizeof(buffer) / sizeof(buffer[0])));
     return std::wstring(buffer);
 }
 
-static void SetStatusText(HWND dialog, const std::wstring &text)
+static void SetText(HWND dialog, int controlId, const wchar_t *text)
 {
-    SetDlgItemTextW(dialog, IDC_AMS_STATUS_TEXT, text.c_str());
+    SetDlgItemTextW(dialog, controlId, text == nullptr ? L"" : text);
 }
 
-static void SetLabels(HWND dialog, const wchar_t *label1, const wchar_t *label2, const wchar_t *label3)
+static void SetStatus(HWND dialog, const std::wstring &text)
 {
-    SetDlgItemTextW(dialog, IDC_AMS_LABEL_1, label1 == nullptr ? L"" : label1);
-    SetDlgItemTextW(dialog, IDC_AMS_LABEL_2, label2 == nullptr ? L"" : label2);
-    SetDlgItemTextW(dialog, IDC_AMS_LABEL_3, label3 == nullptr ? L"" : label3);
+    SetText(dialog, IDC_AMS_STATUS_TEXT, text.c_str());
 }
 
-static void SetEditVisible(HWND dialog, int controlId, bool visible)
+static void SetControlVisible(HWND dialog, int controlId, bool visible)
 {
-    ShowWindow(GetDlgItem(dialog, controlId), visible ? SW_SHOW : SW_HIDE);
+    HWND control = GetDlgItem(dialog, controlId);
+    if (control != nullptr) {
+        ShowWindow(control, visible ? SW_SHOW : SW_HIDE);
+    }
 }
 
-static void SetLabelVisible(HWND dialog, int controlId, bool visible)
+static void SetPasswordMask(HWND dialog, bool enabled)
 {
-    ShowWindow(GetDlgItem(dialog, controlId), visible ? SW_SHOW : SW_HIDE);
+    HWND edit = GetDlgItem(dialog, IDC_AMS_CARD_PASSWORD);
+    SendMessageW(edit, EM_SETPASSWORDCHAR, enabled ? L'*' : 0, 0);
+    InvalidateRect(edit, nullptr, TRUE);
 }
 
-static void ConfigurePasswordMask(HWND dialog, bool enabled)
+static void ClearInputs(HWND dialog)
 {
-    HWND passwordEdit = GetDlgItem(dialog, IDC_AMS_CARD_PASSWORD);
-    SendMessageW(passwordEdit, EM_SETPASSWORDCHAR, enabled ? L'*' : 0, 0);
-    InvalidateRect(passwordEdit, nullptr, TRUE);
-}
-
-static void ResetInput(HWND dialog)
-{
-    SetDlgItemTextW(dialog, IDC_AMS_CARD_NAME, L"");
-    SetDlgItemTextW(dialog, IDC_AMS_CARD_PASSWORD, L"");
-    SetDlgItemTextW(dialog, IDC_AMS_CARD_MONEY, L"");
+    SetText(dialog, IDC_AMS_CARD_NAME, L"");
+    SetText(dialog, IDC_AMS_CARD_PASSWORD, L"");
+    SetText(dialog, IDC_AMS_CARD_MONEY, L"");
 }
 
 static void ClearListColumns(HWND listHandle)
@@ -233,7 +78,7 @@ static void PrepareList(HWND listHandle)
     ClearListColumns(listHandle);
 }
 
-static void AddListColumn(HWND listHandle, int index, int width, const wchar_t *title)
+static void AddColumn(HWND listHandle, int index, int width, const wchar_t *title)
 {
     LVCOLUMNW column = {0};
     column.mask = LVCF_FMT | LVCF_WIDTH | LVCF_TEXT;
@@ -243,9 +88,13 @@ static void AddListColumn(HWND listHandle, int index, int width, const wchar_t *
     ListView_InsertColumn(listHandle, index, &column);
 }
 
-static void AddListRow(HWND listHandle, int row, const std::vector<std::wstring> &values)
+static void AddRow(HWND listHandle, int row, const std::vector<std::wstring> &values)
 {
     LVITEMW item = {0};
+    if (values.empty()) {
+        return;
+    }
+
     item.mask = LVIF_TEXT;
     item.iItem = row;
     item.pszText = const_cast<LPWSTR>(values[0].c_str());
@@ -256,388 +105,400 @@ static void AddListRow(HWND listHandle, int row, const std::vector<std::wstring>
     }
 }
 
-static void ShowCardQueryResult(HWND listHandle, const std::vector<Card> &cards)
+static void ShowMessageRow(HWND listHandle, const wchar_t *message)
 {
-    int row = 0;
     PrepareList(listHandle);
-    AddListColumn(listHandle, 0, 160, L"卡号");
-    AddListColumn(listHandle, 1, 100, L"状态");
-    AddListColumn(listHandle, 2, 100, L"余额");
-    AddListColumn(listHandle, 3, 120, L"累计消费");
-    AddListColumn(listHandle, 4, 100, L"使用次数");
-    AddListColumn(listHandle, 5, 210, L"最后使用时间");
+    AddColumn(listHandle, 0, 700, L"提示");
+    AddRow(listHandle, 0, {message});
+}
 
-    for (const Card &card : cards) {
-        AddListRow(listHandle, row++, {
-            GuiUtf8ToWide(card.aCardName),
-            GuiCardStatusText(card.nStatus),
-            GuiFormatMoneyFromCent(card.nBalanceCent),
-            GuiFormatMoneyFromCent(card.nTotalUseCent),
-            std::to_wstring(card.nUseCount),
-            GuiFormatTime(card.tLast)
+static void ShowCard(HWND listHandle, const Card &card)
+{
+    PrepareList(listHandle);
+    AddColumn(listHandle, 0, 150, L"卡号");
+    AddColumn(listHandle, 1, 100, L"状态");
+    AddColumn(listHandle, 2, 100, L"余额");
+    AddColumn(listHandle, 3, 120, L"累计消费");
+    AddColumn(listHandle, 4, 100, L"使用次数");
+    AddColumn(listHandle, 5, 190, L"最后使用时间");
+
+    AddRow(listHandle, 0, {
+        GuiUtf8ToWide(card.aCardName),
+        GuiCardStatusText(card.nStatus),
+        GuiFormatMoneyFromCent(card.nBalanceCent),
+        GuiFormatMoneyFromCent(card.nTotalUseCent),
+        std::to_wstring(card.nUseCount),
+        GuiFormatTime(card.tLast)
+    });
+}
+
+static void ShowSettle(HWND listHandle, const SettleInfo &info)
+{
+    PrepareList(listHandle);
+    AddColumn(listHandle, 0, 150, L"卡号");
+    AddColumn(listHandle, 1, 190, L"上机时间");
+    AddColumn(listHandle, 2, 190, L"下机时间");
+    AddColumn(listHandle, 3, 100, L"消费金额");
+    AddColumn(listHandle, 4, 100, L"余额");
+    AddRow(listHandle, 0, {
+        GuiUtf8ToWide(info.aCardName),
+        GuiFormatTime(info.tStart),
+        GuiFormatTime(info.tEnd),
+        GuiFormatMoneyFromCent(info.nAmountCent),
+        GuiFormatMoneyFromCent(info.nBalanceCent)
+    });
+}
+
+static void ShowLogon(HWND listHandle, const LogonInfo &info)
+{
+    PrepareList(listHandle);
+    AddColumn(listHandle, 0, 150, L"卡号");
+    AddColumn(listHandle, 1, 100, L"余额");
+    AddColumn(listHandle, 2, 190, L"上机时间");
+    AddRow(listHandle, 0, {
+        GuiUtf8ToWide(info.aCardName),
+        GuiFormatMoneyFromCent(info.nBalanceCent),
+        GuiFormatTime(info.tStart)
+    });
+}
+
+static void ShowMoney(HWND listHandle, const Card &card, const Money &money, const wchar_t *title)
+{
+    PrepareList(listHandle);
+    AddColumn(listHandle, 0, 150, L"卡号");
+    AddColumn(listHandle, 1, 120, title);
+    AddColumn(listHandle, 2, 120, L"当前余额");
+    AddRow(listHandle, 0, {
+        GuiUtf8ToWide(card.aCardName),
+        GuiFormatMoneyFromCent(money.nMoneyCent),
+        GuiFormatMoneyFromCent(card.nBalanceCent)
+    });
+}
+
+static void ShowStatistics(HWND listHandle, const BillingStatistics &statistics)
+{
+    PrepareList(listHandle);
+    AddColumn(listHandle, 0, 160, L"项目");
+    AddColumn(listHandle, 1, 160, L"金额");
+    AddRow(listHandle, 0, {L"总营业额", GuiFormatMoneyFromCent(statistics.totalAmountCent)});
+    for (int i = 0; i < 12; ++i) {
+        AddRow(listHandle, i + 1, {
+            std::to_wstring(statistics.year) + L"年" + std::to_wstring(i + 1) + L"月",
+            GuiFormatMoneyFromCent(statistics.monthlyAmountCent[i])
         });
     }
 }
 
-static void ShowSingleResult(HWND listHandle, const std::vector<std::wstring> &columns, const std::vector<std::wstring> &values)
+static std::wstring ErrorText(BizResult result)
 {
-    int i = 0;
-    PrepareList(listHandle);
-    for (i = 0; i < static_cast<int>(columns.size()); ++i) {
-        AddListColumn(listHandle, i, 180, columns[i].c_str());
+    if (result == BIZ_ERR_WRONG_PASSWORD) {
+        return L"账号、卡号或密码错误。";
     }
-    AddListRow(listHandle, 0, values);
+    if (result == BIZ_ERR_SYSTEM) {
+        return L"系统内部错误，或当前登录角色没有权限执行该操作。";
+    }
+    return GuiUtf8ToWide(bizGetMessage(result));
 }
 
-static void ShowBillingResults(HWND listHandle, const Billing *items, size_t count)
+static void SetNavButton(HWND dialog, int controlId, const wchar_t *text, bool visible)
 {
-    int row = 0;
-    size_t i = 0;
-
-    PrepareList(listHandle);
-    AddListColumn(listHandle, 0, 160, L"卡号");
-    AddListColumn(listHandle, 1, 190, L"上机时间");
-    AddListColumn(listHandle, 2, 190, L"下机时间");
-    AddListColumn(listHandle, 3, 100, L"消费金额");
-    AddListColumn(listHandle, 4, 90, L"状态");
-
-    for (i = 0; i < count; ++i) {
-        AddListRow(listHandle, row++, {
-            GuiUtf8ToWide(items[i].aCardName),
-            GuiFormatTime(items[i].tStart),
-            GuiFormatTime(items[i].tEnd),
-            GuiFormatMoneyFromCent(items[i].nAmountCent),
-            GuiBillingStatusText(items[i].nStatus)
-        });
-    }
+    SetText(dialog, controlId, text);
+    SetControlVisible(dialog, controlId, visible);
 }
 
-static void SwitchFeature(HWND dialog, GuiState *state, GuiFeature feature)
+static void ConfigureInput(HWND dialog,
+                           const wchar_t *label1,
+                           bool showInput1,
+                           const wchar_t *label2,
+                           bool showInput2,
+                           const wchar_t *label3,
+                           bool showInput3,
+                           bool passwordMask)
 {
-    state->feature = feature;
-    ResetInput(dialog);
+    SetText(dialog, IDC_AMS_LABEL_1, label1);
+    SetText(dialog, IDC_AMS_LABEL_2, label2);
+    SetText(dialog, IDC_AMS_LABEL_3, label3);
 
-    switch (feature) {
-    case GuiFeature::AddCard:
-        SetLabels(dialog, L"卡号", L"密码", L"初始金额(元)");
-        SetEditVisible(dialog, IDC_AMS_CARD_NAME, true);
-        SetEditVisible(dialog, IDC_AMS_CARD_PASSWORD, true);
-        SetEditVisible(dialog, IDC_AMS_CARD_MONEY, true);
-        SetLabelVisible(dialog, IDC_AMS_LABEL_1, true);
-        SetLabelVisible(dialog, IDC_AMS_LABEL_2, true);
-        SetLabelVisible(dialog, IDC_AMS_LABEL_3, true);
-        ConfigurePasswordMask(dialog, true);
-        SetStatusText(dialog, L"添加卡：输入卡号、密码、初始金额。\n");
-        break;
-    case GuiFeature::QueryCard:
-        SetLabels(dialog, L"卡号关键字", L"", L"");
-        SetEditVisible(dialog, IDC_AMS_CARD_NAME, true);
-        SetEditVisible(dialog, IDC_AMS_CARD_PASSWORD, false);
-        SetEditVisible(dialog, IDC_AMS_CARD_MONEY, false);
-        SetLabelVisible(dialog, IDC_AMS_LABEL_1, true);
-        SetLabelVisible(dialog, IDC_AMS_LABEL_2, false);
-        SetLabelVisible(dialog, IDC_AMS_LABEL_3, false);
-        ConfigurePasswordMask(dialog, false);
-        SetStatusText(dialog, L"查询卡：支持关键字查询。\n");
-        break;
-    case GuiFeature::Logon:
-        SetLabels(dialog, L"卡号", L"密码", L"");
-        SetEditVisible(dialog, IDC_AMS_CARD_NAME, true);
-        SetEditVisible(dialog, IDC_AMS_CARD_PASSWORD, true);
-        SetEditVisible(dialog, IDC_AMS_CARD_MONEY, false);
-        SetLabelVisible(dialog, IDC_AMS_LABEL_1, true);
-        SetLabelVisible(dialog, IDC_AMS_LABEL_2, true);
-        SetLabelVisible(dialog, IDC_AMS_LABEL_3, false);
-        ConfigurePasswordMask(dialog, true);
-        SetStatusText(dialog, L"上机：输入卡号与密码。\n");
-        break;
-    case GuiFeature::Settle:
-        SetLabels(dialog, L"卡号", L"密码", L"");
-        SetEditVisible(dialog, IDC_AMS_CARD_NAME, true);
-        SetEditVisible(dialog, IDC_AMS_CARD_PASSWORD, true);
-        SetEditVisible(dialog, IDC_AMS_CARD_MONEY, false);
-        SetLabelVisible(dialog, IDC_AMS_LABEL_1, true);
-        SetLabelVisible(dialog, IDC_AMS_LABEL_2, true);
-        SetLabelVisible(dialog, IDC_AMS_LABEL_3, false);
-        ConfigurePasswordMask(dialog, true);
-        SetStatusText(dialog, L"下机：输入卡号与密码。\n");
-        break;
-    case GuiFeature::Recharge:
-        SetLabels(dialog, L"卡号", L"密码", L"充值金额(元)");
-        SetEditVisible(dialog, IDC_AMS_CARD_NAME, true);
-        SetEditVisible(dialog, IDC_AMS_CARD_PASSWORD, true);
-        SetEditVisible(dialog, IDC_AMS_CARD_MONEY, true);
-        SetLabelVisible(dialog, IDC_AMS_LABEL_1, true);
-        SetLabelVisible(dialog, IDC_AMS_LABEL_2, true);
-        SetLabelVisible(dialog, IDC_AMS_LABEL_3, true);
-        ConfigurePasswordMask(dialog, true);
-        SetStatusText(dialog, L"充值：输入卡号、密码、金额。\n");
-        break;
-    case GuiFeature::Refund:
-        SetLabels(dialog, L"卡号", L"密码", L"退费金额(元)");
-        SetEditVisible(dialog, IDC_AMS_CARD_NAME, true);
-        SetEditVisible(dialog, IDC_AMS_CARD_PASSWORD, true);
-        SetEditVisible(dialog, IDC_AMS_CARD_MONEY, true);
-        SetLabelVisible(dialog, IDC_AMS_LABEL_1, true);
-        SetLabelVisible(dialog, IDC_AMS_LABEL_2, true);
-        SetLabelVisible(dialog, IDC_AMS_LABEL_3, true);
-        ConfigurePasswordMask(dialog, true);
-        SetStatusText(dialog, L"退费：输入卡号、密码、金额。\n");
-        break;
-    case GuiFeature::CancelCard:
-        SetLabels(dialog, L"卡号", L"密码", L"");
-        SetEditVisible(dialog, IDC_AMS_CARD_NAME, true);
-        SetEditVisible(dialog, IDC_AMS_CARD_PASSWORD, true);
-        SetEditVisible(dialog, IDC_AMS_CARD_MONEY, false);
-        SetLabelVisible(dialog, IDC_AMS_LABEL_1, true);
-        SetLabelVisible(dialog, IDC_AMS_LABEL_2, true);
-        SetLabelVisible(dialog, IDC_AMS_LABEL_3, false);
-        ConfigurePasswordMask(dialog, true);
-        SetStatusText(dialog, L"注销卡：输入卡号与密码。\n");
-        break;
-    case GuiFeature::Billing:
-        SetLabels(dialog, L"卡号", L"", L"");
-        SetEditVisible(dialog, IDC_AMS_CARD_NAME, true);
-        SetEditVisible(dialog, IDC_AMS_CARD_PASSWORD, false);
-        SetEditVisible(dialog, IDC_AMS_CARD_MONEY, false);
-        SetLabelVisible(dialog, IDC_AMS_LABEL_1, true);
-        SetLabelVisible(dialog, IDC_AMS_LABEL_2, false);
-        SetLabelVisible(dialog, IDC_AMS_LABEL_3, false);
-        ConfigurePasswordMask(dialog, false);
-        SetStatusText(dialog, L"消费记录：输入卡号查询。\n");
-        break;
-    case GuiFeature::Statistics:
-        SetLabels(dialog, L"年份(YYYY)", L"", L"");
-        SetEditVisible(dialog, IDC_AMS_CARD_NAME, true);
-        SetEditVisible(dialog, IDC_AMS_CARD_PASSWORD, false);
-        SetEditVisible(dialog, IDC_AMS_CARD_MONEY, false);
-        SetLabelVisible(dialog, IDC_AMS_LABEL_1, true);
-        SetLabelVisible(dialog, IDC_AMS_LABEL_2, false);
-        SetLabelVisible(dialog, IDC_AMS_LABEL_3, false);
-        ConfigurePasswordMask(dialog, false);
-        SetStatusText(dialog, L"营业额统计：输入年份。\n");
-        break;
-    }
+    SetControlVisible(dialog, IDC_AMS_LABEL_1, showInput1);
+    SetControlVisible(dialog, IDC_AMS_CARD_NAME, showInput1);
+    SetControlVisible(dialog, IDC_AMS_LABEL_2, showInput2);
+    SetControlVisible(dialog, IDC_AMS_CARD_PASSWORD, showInput2);
+    SetControlVisible(dialog, IDC_AMS_LABEL_3, showInput3);
+    SetControlVisible(dialog, IDC_AMS_CARD_MONEY, showInput3);
+    SetPasswordMask(dialog, passwordMask);
+}
 
+static void SwitchMode(HWND dialog, GuiState *state, GuiMode mode)
+{
+    state->mode = mode;
+    ClearInputs(dialog);
     PrepareList(state->listHandle);
-}
+    SetControlVisible(dialog, IDC_AMS_SUBMIT, true);
 
-static void ShowError(HWND dialog, BizResult result)
-{
-    SetStatusText(dialog, GuiUtf8ToWide(bizGetMessage(result)));
-}
-
-static void ExecuteAddCard(HWND dialog, GuiState *state)
-{
-    Card card = {};
-    std::string cardName = GuiWideToUtf8(ReadControlText(dialog, IDC_AMS_CARD_NAME));
-    std::string password = GuiWideToUtf8(ReadControlText(dialog, IDC_AMS_CARD_PASSWORD));
-    std::string amount = GuiWideToUtf8(ReadControlText(dialog, IDC_AMS_CARD_MONEY));
-    BizResult result = bizAddCard(cardName.c_str(), password.c_str(), amount.c_str(), &card);
-
-    if (result != BIZ_OK) {
-        ShowError(dialog, result);
-        return;
-    }
-
-    ShowSingleResult(state->listHandle,
-        {L"卡号", L"状态", L"余额"},
-        {GuiUtf8ToWide(card.aCardName), GuiCardStatusText(card.nStatus), GuiFormatMoneyFromCent(card.nBalanceCent)});
-    SetStatusText(dialog, L"添加卡成功。\n");
-}
-
-static void ExecuteQueryCard(HWND dialog, GuiState *state)
-{
-    std::string keyword = GuiWideToUtf8(ReadControlText(dialog, IDC_AMS_CARD_NAME));
-    size_t actual = 0;
-    size_t required = 0;
-    BizResult result = bizQueryCardsByKeyword(keyword.c_str(), nullptr, 0, &actual, &required);
-
-    if (result != BIZ_OK) {
-        ShowError(dialog, result);
-        return;
-    }
-
-    std::vector<Card> cards(required);
-    result = bizQueryCardsByKeyword(keyword.c_str(), cards.data(), cards.size(), &actual, &required);
-    if (result != BIZ_OK) {
-        ShowError(dialog, result);
-        return;
-    }
-
-    cards.resize(actual);
-    ShowCardQueryResult(state->listHandle, cards);
-    SetStatusText(dialog, L"查询完成。\n");
-}
-
-static void ExecuteLogon(HWND dialog, GuiState *state)
-{
-    LogonInfo info = {};
-    std::string cardName = GuiWideToUtf8(ReadControlText(dialog, IDC_AMS_CARD_NAME));
-    std::string password = GuiWideToUtf8(ReadControlText(dialog, IDC_AMS_CARD_PASSWORD));
-    BizResult result = bizStartBilling(cardName.c_str(), password.c_str(), time(nullptr), &info);
-
-    if (result != BIZ_OK) {
-        ShowError(dialog, result);
-        return;
-    }
-
-    ShowSingleResult(state->listHandle,
-        {L"卡号", L"余额", L"上机时间"},
-        {GuiUtf8ToWide(info.aCardName), GuiFormatMoneyFromCent(info.nBalanceCent), GuiFormatTime(info.tStart)});
-    SetStatusText(dialog, L"上机成功。\n");
-}
-
-static void ExecuteSettle(HWND dialog, GuiState *state)
-{
-    SettleInfo info = {};
-    std::string cardName = GuiWideToUtf8(ReadControlText(dialog, IDC_AMS_CARD_NAME));
-    std::string password = GuiWideToUtf8(ReadControlText(dialog, IDC_AMS_CARD_PASSWORD));
-    BizResult result = bizStopBilling(cardName.c_str(), password.c_str(), time(nullptr), &info);
-
-    if (result != BIZ_OK) {
-        ShowError(dialog, result);
-        return;
-    }
-
-    ShowSingleResult(state->listHandle,
-        {L"卡号", L"上机时间", L"下机时间", L"消费金额", L"余额"},
-        {GuiUtf8ToWide(info.aCardName), GuiFormatTime(info.tStart), GuiFormatTime(info.tEnd),
-            GuiFormatMoneyFromCent(info.nAmountCent), GuiFormatMoneyFromCent(info.nBalanceCent)});
-    SetStatusText(dialog, L"下机成功。\n");
-}
-
-static void ExecuteRecharge(HWND dialog, GuiState *state)
-{
-    Money money = {};
-    Card card = {};
-    std::string cardName = GuiWideToUtf8(ReadControlText(dialog, IDC_AMS_CARD_NAME));
-    std::string password = GuiWideToUtf8(ReadControlText(dialog, IDC_AMS_CARD_PASSWORD));
-    std::string amount = GuiWideToUtf8(ReadControlText(dialog, IDC_AMS_CARD_MONEY));
-    BizResult result = bizRecharge(cardName.c_str(), password.c_str(), amount.c_str(), &money, &card);
-
-    if (result != BIZ_OK) {
-        ShowError(dialog, result);
-        return;
-    }
-
-    ShowSingleResult(state->listHandle,
-        {L"卡号", L"充值金额", L"当前余额"},
-        {GuiUtf8ToWide(card.aCardName), GuiFormatMoneyFromCent(money.nMoneyCent), GuiFormatMoneyFromCent(card.nBalanceCent)});
-    SetStatusText(dialog, L"充值成功。\n");
-}
-
-static void ExecuteRefund(HWND dialog, GuiState *state)
-{
-    Money money = {};
-    Card card = {};
-    std::string cardName = GuiWideToUtf8(ReadControlText(dialog, IDC_AMS_CARD_NAME));
-    std::string password = GuiWideToUtf8(ReadControlText(dialog, IDC_AMS_CARD_PASSWORD));
-    std::string amount = GuiWideToUtf8(ReadControlText(dialog, IDC_AMS_CARD_MONEY));
-    BizResult result = bizRefundByAmount(cardName.c_str(), password.c_str(), amount.c_str(), &money, &card);
-
-    if (result != BIZ_OK) {
-        ShowError(dialog, result);
-        return;
-    }
-
-    ShowSingleResult(state->listHandle,
-        {L"卡号", L"退费金额", L"当前余额"},
-        {GuiUtf8ToWide(card.aCardName), GuiFormatMoneyFromCent(money.nMoneyCent), GuiFormatMoneyFromCent(card.nBalanceCent)});
-    SetStatusText(dialog, L"退费成功。\n");
-}
-
-static void ExecuteCancelCard(HWND dialog, GuiState *state)
-{
-    Money money = {};
-    Card card = {};
-    std::string cardName = GuiWideToUtf8(ReadControlText(dialog, IDC_AMS_CARD_NAME));
-    std::string password = GuiWideToUtf8(ReadControlText(dialog, IDC_AMS_CARD_PASSWORD));
-    BizResult result = bizCancelCard(cardName.c_str(), password.c_str(), &money, &card);
-
-    if (result != BIZ_OK) {
-        ShowError(dialog, result);
-        return;
-    }
-
-    ShowSingleResult(state->listHandle,
-        {L"卡号", L"退款金额"},
-        {GuiUtf8ToWide(card.aCardName), GuiFormatMoneyFromCent(money.nMoneyCent)});
-    SetStatusText(dialog, L"注销卡成功。\n");
-}
-
-static void ExecuteBilling(HWND dialog, GuiState *state)
-{
-    BillingQueryResult resultSet = {};
-    std::string cardName = GuiWideToUtf8(ReadControlText(dialog, IDC_AMS_CARD_NAME));
-    BizResult result = bizQueryBillingsByCardName(cardName.c_str(), &resultSet);
-
-    if (result != BIZ_OK) {
-        ShowError(dialog, result);
-        return;
-    }
-
-    ShowBillingResults(state->listHandle, resultSet.items, resultSet.count);
-    bizFreeBillingQueryResult(&resultSet);
-    SetStatusText(dialog, L"消费记录查询完成。\n");
-}
-
-static void ExecuteStatistics(HWND dialog, GuiState *state)
-{
-    BillingStatistics statistics = {};
-    std::string year = GuiWideToUtf8(ReadControlText(dialog, IDC_AMS_CARD_NAME));
-    BizResult result = bizGetBillingStatistics(year.c_str(), &statistics);
-
-    if (result != BIZ_OK) {
-        ShowError(dialog, result);
-        return;
-    }
-
-    PrepareList(state->listHandle);
-    AddListColumn(state->listHandle, 0, 220, L"项目");
-    AddListColumn(state->listHandle, 1, 220, L"金额(元)");
-
-    AddListRow(state->listHandle, 0, {L"总营业额", GuiFormatMoneyFromCent(statistics.totalAmountCent)});
-    for (int month = 0; month < 12; ++month) {
-        AddListRow(state->listHandle, month + 1,
-            {std::to_wstring(statistics.year) + L"年" + std::to_wstring(month + 1) + L"月",
-             GuiFormatMoneyFromCent(statistics.monthlyAmountCent[month])});
-    }
-
-    SetStatusText(dialog, L"营业额统计完成。\n");
-}
-
-static void ExecuteCurrentFeature(HWND dialog, GuiState *state)
-{
-    switch (state->feature) {
-    case GuiFeature::AddCard:
-        ExecuteAddCard(dialog, state);
+    switch (mode) {
+    case GuiMode::AuthAdmin:
+        SetWindowTextW(dialog, L"计费管理系统 - 登录");
+        SetNavButton(dialog, IDC_AMS_NAV_ADD_CARD, L"管理员登录", true);
+        SetNavButton(dialog, IDC_AMS_NAV_QUERY_CARD, L"用户登录", true);
+        SetNavButton(dialog, IDC_AMS_NAV_LOGON, L"用户注册", true);
+        SetNavButton(dialog, IDC_AMS_NAV_SETTLE, L"退出", true);
+        SetNavButton(dialog, IDC_AMS_NAV_RECHARGE, L"", false);
+        SetNavButton(dialog, IDC_AMS_NAV_REFUND, L"", false);
+        SetNavButton(dialog, IDC_AMS_NAV_CANCEL_CARD, L"", false);
+        SetNavButton(dialog, IDC_AMS_NAV_BILLING, L"", false);
+        SetNavButton(dialog, IDC_AMS_NAV_STAT, L"", false);
+        SetNavButton(dialog, IDC_AMS_NAV_EXIT, L"", false);
+        ConfigureInput(dialog, L"管理员账号", true, L"管理员密码", true, L"", false, true);
+        SetText(dialog, IDC_AMS_SUBMIT, L"登录");
+        SetStatus(dialog, L"");
         break;
-    case GuiFeature::QueryCard:
-        ExecuteQueryCard(dialog, state);
+    case GuiMode::AuthUserLogin:
+        ConfigureInput(dialog, L"卡号", true, L"密码", true, L"", false, true);
+        SetText(dialog, IDC_AMS_SUBMIT, L"登录");
+        SetStatus(dialog, L"用户登录：输入卡号和密码。");
         break;
-    case GuiFeature::Logon:
-        ExecuteLogon(dialog, state);
+    case GuiMode::AuthRegister:
+        ConfigureInput(dialog, L"注册卡号", true, L"注册密码", true, L"", false, true);
+        SetText(dialog, IDC_AMS_SUBMIT, L"注册");
+        SetStatus(dialog, L"用户注册：默认赠送 100 元新手礼包。");
         break;
-    case GuiFeature::Settle:
-        ExecuteSettle(dialog, state);
+    case GuiMode::AdminQuery:
+    case GuiMode::AdminStop:
+        SetWindowTextW(dialog, L"计费管理系统 - 管理员后台");
+        SetNavButton(dialog, IDC_AMS_NAV_ADD_CARD, L"查询卡", true);
+        SetNavButton(dialog, IDC_AMS_NAV_QUERY_CARD, L"下机", true);
+        SetNavButton(dialog, IDC_AMS_NAV_LOGON, L"充值", true);
+        SetNavButton(dialog, IDC_AMS_NAV_SETTLE, L"退费", true);
+        SetNavButton(dialog, IDC_AMS_NAV_RECHARGE, L"营业额统计", true);
+        SetNavButton(dialog, IDC_AMS_NAV_REFUND, L"退出登录", true);
+        SetNavButton(dialog, IDC_AMS_NAV_CANCEL_CARD, L"", false);
+        SetNavButton(dialog, IDC_AMS_NAV_BILLING, L"", false);
+        SetNavButton(dialog, IDC_AMS_NAV_STAT, L"", false);
+        SetNavButton(dialog, IDC_AMS_NAV_EXIT, L"", false);
+        ConfigureInput(dialog, L"卡号", true, L"", false, L"", false, false);
+        SetText(dialog, IDC_AMS_SUBMIT, mode == GuiMode::AdminQuery ? L"查询" : L"下机");
+        SetStatus(dialog, mode == GuiMode::AdminQuery ? L"管理员：查询任意卡，不需要卡密码。" : L"管理员：下机只需要卡号。");
         break;
-    case GuiFeature::Recharge:
-        ExecuteRecharge(dialog, state);
+    case GuiMode::AdminRecharge:
+    case GuiMode::AdminRefund:
+        ConfigureInput(dialog, L"卡号", true, L"", false, mode == GuiMode::AdminRecharge ? L"充值金额(元)" : L"退费金额(元)", true, false);
+        SetText(dialog, IDC_AMS_SUBMIT, mode == GuiMode::AdminRecharge ? L"充值" : L"退费");
+        SetStatus(dialog, L"管理员资金操作：只需要卡号和金额，不需要卡密码。");
         break;
-    case GuiFeature::Refund:
-        ExecuteRefund(dialog, state);
+    case GuiMode::AdminStatistics:
+        ConfigureInput(dialog, L"年份(YYYY)", true, L"", false, L"", false, false);
+        SetText(dialog, IDC_AMS_SUBMIT, L"统计");
+        SetStatus(dialog, L"管理员：营业额统计。");
         break;
-    case GuiFeature::CancelCard:
-        ExecuteCancelCard(dialog, state);
+    case GuiMode::UserBalance:
+    case GuiMode::UserStart:
+    case GuiMode::UserStop:
+        SetWindowTextW(dialog, L"计费管理系统 - 用户中心");
+        SetNavButton(dialog, IDC_AMS_NAV_ADD_CARD, L"查余额", true);
+        SetNavButton(dialog, IDC_AMS_NAV_QUERY_CARD, L"上机", true);
+        SetNavButton(dialog, IDC_AMS_NAV_LOGON, L"下机", true);
+        SetNavButton(dialog, IDC_AMS_NAV_SETTLE, L"充值", true);
+        SetNavButton(dialog, IDC_AMS_NAV_RECHARGE, L"退费", true);
+        SetNavButton(dialog, IDC_AMS_NAV_REFUND, L"注销卡", true);
+        SetNavButton(dialog, IDC_AMS_NAV_CANCEL_CARD, L"退出登录", true);
+        SetNavButton(dialog, IDC_AMS_NAV_BILLING, L"", false);
+        SetNavButton(dialog, IDC_AMS_NAV_STAT, L"", false);
+        SetNavButton(dialog, IDC_AMS_NAV_EXIT, L"", false);
+        ConfigureInput(dialog, L"", false, L"", false, L"", false, false);
+        SetText(dialog, IDC_AMS_SUBMIT, mode == GuiMode::UserBalance ? L"查询余额" : (mode == GuiMode::UserStart ? L"上机" : L"下机"));
+        SetStatus(dialog, std::wstring(L"用户：当前登录卡号 ") + GuiUtf8ToWide(state->session.cardName) + L"，默认作用于当前卡。");
         break;
-    case GuiFeature::Billing:
-        ExecuteBilling(dialog, state);
+    case GuiMode::UserRecharge:
+    case GuiMode::UserRefund:
+        ConfigureInput(dialog, mode == GuiMode::UserRecharge ? L"充值金额(元)" : L"退费金额(元)", true, L"", false, L"", false, false);
+        SetText(dialog, IDC_AMS_SUBMIT, mode == GuiMode::UserRecharge ? L"充值" : L"退费");
+        SetStatus(dialog, L"用户资金操作：默认作用于当前卡。");
         break;
-    case GuiFeature::Statistics:
-        ExecuteStatistics(dialog, state);
+    case GuiMode::UserCancel:
+        ConfigureInput(dialog, L"确认卡号", true, L"确认密码", true, L"", false, true);
+        SetText(dialog, IDC_AMS_SUBMIT, L"注销");
+        SetStatus(dialog, L"注销卡需要再次输入卡号和密码确认。");
         break;
     }
+}
+
+static void LogoutToLogin(HWND dialog, GuiState *state)
+{
+    bizLogout(&state->session);
+    SwitchMode(dialog, state, GuiMode::AuthAdmin);
+    ShowMessageRow(state->listHandle, L"已退出登录。");
+}
+
+static void ExecuteSubmit(HWND dialog, GuiState *state)
+{
+    std::string text1 = GuiWideToUtf8(ReadText(dialog, IDC_AMS_CARD_NAME));
+    std::string text2 = GuiWideToUtf8(ReadText(dialog, IDC_AMS_CARD_PASSWORD));
+    std::string text3 = GuiWideToUtf8(ReadText(dialog, IDC_AMS_CARD_MONEY));
+    BizResult result = BIZ_OK;
+
+    switch (state->mode) {
+    case GuiMode::AuthAdmin:
+        result = bizAdminLogin(text1.c_str(), text2.c_str(), &state->session);
+        if (result == BIZ_OK) {
+            SwitchMode(dialog, state, GuiMode::AdminQuery);
+            ShowMessageRow(state->listHandle, L"管理员登录成功。");
+        } else {
+            SetStatus(dialog, ErrorText(result));
+        }
+        break;
+    case GuiMode::AuthUserLogin:
+        result = bizUserLogin(text1.c_str(), text2.c_str(), &state->session);
+        if (result == BIZ_OK) {
+            SwitchMode(dialog, state, GuiMode::UserBalance);
+            ShowMessageRow(state->listHandle, L"用户登录成功。");
+        } else {
+            SetStatus(dialog, ErrorText(result));
+        }
+        break;
+    case GuiMode::AuthRegister: {
+        Card card = {};
+        result = bizUserRegister(text1.c_str(), text2.c_str(), &card);
+        if (result == BIZ_OK) {
+            MessageBoxW(dialog, L"注册成功！你已获得 100 元新手礼包。", L"Promotion", MB_OK | MB_ICONINFORMATION);
+            ShowCard(state->listHandle, card);
+            SetStatus(dialog, L"注册成功，可直接使用用户登录。");
+        } else {
+            SetStatus(dialog, ErrorText(result));
+        }
+        break;
+    }
+    case GuiMode::AdminQuery: {
+        Card card = {};
+        result = bizAdminQueryCard(&state->session, text1.c_str(), &card);
+        if (result == BIZ_OK) {
+            ShowCard(state->listHandle, card);
+            SetStatus(dialog, L"查询完成。");
+        } else {
+            SetStatus(dialog, ErrorText(result));
+        }
+        break;
+    }
+    case GuiMode::AdminStop: {
+        SettleInfo info = {};
+        result = bizAdminStopBilling(&state->session, text1.c_str(), time(nullptr), &info);
+        if (result == BIZ_OK) {
+            ShowSettle(state->listHandle, info);
+            SetStatus(dialog, L"管理员下机成功。");
+        } else {
+            SetStatus(dialog, ErrorText(result));
+        }
+        break;
+    }
+    case GuiMode::AdminRecharge:
+    case GuiMode::AdminRefund: {
+        Money money = {};
+        Card card = {};
+        if (state->mode == GuiMode::AdminRecharge) {
+            result = bizAdminRecharge(&state->session, text1.c_str(), text3.c_str(), &money, &card);
+        } else {
+            result = bizAdminRefundByAmount(&state->session, text1.c_str(), text3.c_str(), &money, &card);
+        }
+        if (result == BIZ_OK) {
+            ShowMoney(state->listHandle, card, money, state->mode == GuiMode::AdminRecharge ? L"充值金额" : L"退费金额");
+            SetStatus(dialog, state->mode == GuiMode::AdminRecharge ? L"管理员充值成功。" : L"管理员退费成功。");
+        } else {
+            SetStatus(dialog, ErrorText(result));
+        }
+        break;
+    }
+    case GuiMode::AdminStatistics: {
+        BillingStatistics statistics = {};
+        result = bizAdminGetBillingStatistics(&state->session, text1.c_str(), &statistics);
+        if (result == BIZ_OK) {
+            ShowStatistics(state->listHandle, statistics);
+            SetStatus(dialog, L"营业额统计完成。");
+        } else {
+            SetStatus(dialog, ErrorText(result));
+        }
+        break;
+    }
+    case GuiMode::UserBalance: {
+        Card card = {};
+        result = bizUserQueryBalance(&state->session, &card);
+        if (result == BIZ_OK) {
+            ShowCard(state->listHandle, card);
+            SetStatus(dialog, L"余额查询完成。");
+        } else {
+            SetStatus(dialog, ErrorText(result));
+        }
+        break;
+    }
+    case GuiMode::UserStart: {
+        LogonInfo info = {};
+        result = bizUserStartBilling(&state->session, time(nullptr), &info);
+        if (result == BIZ_OK) {
+            ShowLogon(state->listHandle, info);
+            SetStatus(dialog, L"上机成功。");
+        } else {
+            SetStatus(dialog, ErrorText(result));
+        }
+        break;
+    }
+    case GuiMode::UserStop: {
+        SettleInfo info = {};
+        result = bizUserStopBilling(&state->session, time(nullptr), &info);
+        if (result == BIZ_OK) {
+            ShowSettle(state->listHandle, info);
+            SetStatus(dialog, L"下机成功。");
+        } else {
+            SetStatus(dialog, ErrorText(result));
+        }
+        break;
+    }
+    case GuiMode::UserRecharge:
+    case GuiMode::UserRefund: {
+        Money money = {};
+        Card card = {};
+        if (state->mode == GuiMode::UserRecharge) {
+            result = bizUserRecharge(&state->session, text1.c_str(), &money, &card);
+        } else {
+            result = bizUserRefundByAmount(&state->session, text1.c_str(), &money, &card);
+        }
+        if (result == BIZ_OK) {
+            ShowMoney(state->listHandle, card, money, state->mode == GuiMode::UserRecharge ? L"充值金额" : L"退费金额");
+            SetStatus(dialog, state->mode == GuiMode::UserRecharge ? L"充值成功。" : L"退费成功。");
+        } else {
+            SetStatus(dialog, ErrorText(result));
+        }
+        break;
+    }
+    case GuiMode::UserCancel: {
+        Money money = {};
+        Card card = {};
+        result = bizUserCancelCardWithPassword(&state->session, text1.c_str(), text2.c_str(), &money, &card);
+        if (result == BIZ_OK) {
+            ShowMoney(state->listHandle, card, money, L"退款金额");
+            MessageBoxW(dialog, L"注销卡成功，当前用户已退出登录。", L"注销卡", MB_OK | MB_ICONINFORMATION);
+            bizLogout(&state->session);
+            SwitchMode(dialog, state, GuiMode::AuthAdmin);
+        } else {
+            SetStatus(dialog, ErrorText(result));
+        }
+        break;
+    }
+    }
+}
+
+static void ResizeAndCenterDialog(HWND dialog)
+{
+    int clientWidth = 760;
+    int clientHeight = 560;
+    LONG_PTR style = GetWindowLongPtrW(dialog, GWL_STYLE);
+    RECT rect = {0, 0, clientWidth, clientHeight};
+    AdjustWindowRectEx(&rect, static_cast<DWORD>(style), FALSE, static_cast<DWORD>(GetWindowLongPtrW(dialog, GWL_EXSTYLE)));
+
+    int width = rect.right - rect.left;
+    int height = rect.bottom - rect.top;
+    RECT work = {0};
+    SystemParametersInfoW(SPI_GETWORKAREA, 0, &work, 0);
+    int x = work.left + ((work.right - work.left) - width) / 2;
+    int y = work.top + ((work.bottom - work.top) - height) / 2;
+    SetWindowPos(dialog, nullptr, x, y, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
 }
 
 static INT_PTR CALLBACK MainDialogProc(HWND dialog, UINT message, WPARAM wParam, LPARAM lParam)
@@ -647,81 +508,90 @@ static INT_PTR CALLBACK MainDialogProc(HWND dialog, UINT message, WPARAM wParam,
     switch (message) {
     case WM_INITDIALOG: {
         GuiState *initState = reinterpret_cast<GuiState *>(lParam);
-        HWND listHandle = GetDlgItem(dialog, IDC_AMS_RESULT_LIST);
-        HFONT fontHandle = CreateFontW(-18, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
-            DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-            CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Microsoft YaHei UI");
-
-        initState->listHandle = listHandle;
+        initState->listHandle = GetDlgItem(dialog, IDC_AMS_RESULT_LIST);
+        bizInitSession(&initState->session);
         SetWindowLongPtrW(dialog, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(initState));
-        SendMessageW(dialog, WM_SETFONT, reinterpret_cast<WPARAM>(fontHandle), TRUE);
-
-        ListView_SetExtendedListViewStyle(listHandle, LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_DOUBLEBUFFER);
-        SwitchFeature(dialog, initState, GuiFeature::AddCard);
-        InitializeLayoutMetrics(dialog, initState);
-        {
-            RECT clientRect = {0};
-            GetClientRect(dialog, &clientRect);
-            UpdateMainLayout(dialog, initState, clientRect.right - clientRect.left, clientRect.bottom - clientRect.top);
-        }
+        ListView_SetExtendedListViewStyle(initState->listHandle, LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_DOUBLEBUFFER);
+        ResizeAndCenterDialog(dialog);
+        SwitchMode(dialog, initState, GuiMode::AuthAdmin);
         return TRUE;
     }
-    case WM_SIZE:
-        if (state == nullptr || wParam == SIZE_MINIMIZED) {
-            return TRUE;
-        }
-        UpdateMainLayout(dialog, state, LOWORD(lParam), HIWORD(lParam));
-        return TRUE;
     case WM_COMMAND:
         if (state == nullptr) {
             return FALSE;
         }
+
         switch (LOWORD(wParam)) {
+        case IDC_AMS_SUBMIT:
+            ExecuteSubmit(dialog, state);
+            return TRUE;
         case IDC_AMS_NAV_ADD_CARD:
-            SwitchFeature(dialog, state, GuiFeature::AddCard);
+            if (bizIsAdminSession(&state->session)) {
+                SwitchMode(dialog, state, GuiMode::AdminQuery);
+            } else if (bizIsUserSession(&state->session)) {
+                SwitchMode(dialog, state, GuiMode::UserBalance);
+            } else {
+                SwitchMode(dialog, state, GuiMode::AuthAdmin);
+            }
             return TRUE;
         case IDC_AMS_NAV_QUERY_CARD:
-            SwitchFeature(dialog, state, GuiFeature::QueryCard);
+            if (bizIsAdminSession(&state->session)) {
+                SwitchMode(dialog, state, GuiMode::AdminStop);
+            } else if (bizIsUserSession(&state->session)) {
+                SwitchMode(dialog, state, GuiMode::UserStart);
+            } else {
+                SwitchMode(dialog, state, GuiMode::AuthUserLogin);
+            }
             return TRUE;
         case IDC_AMS_NAV_LOGON:
-            SwitchFeature(dialog, state, GuiFeature::Logon);
+            if (bizIsAdminSession(&state->session)) {
+                SwitchMode(dialog, state, GuiMode::AdminRecharge);
+            } else if (bizIsUserSession(&state->session)) {
+                SwitchMode(dialog, state, GuiMode::UserStop);
+            } else {
+                SwitchMode(dialog, state, GuiMode::AuthRegister);
+            }
             return TRUE;
         case IDC_AMS_NAV_SETTLE:
-            SwitchFeature(dialog, state, GuiFeature::Settle);
+            if (bizIsAdminSession(&state->session)) {
+                SwitchMode(dialog, state, GuiMode::AdminRefund);
+            } else if (bizIsUserSession(&state->session)) {
+                SwitchMode(dialog, state, GuiMode::UserRecharge);
+            } else {
+                EndDialog(dialog, 0);
+            }
             return TRUE;
         case IDC_AMS_NAV_RECHARGE:
-            SwitchFeature(dialog, state, GuiFeature::Recharge);
+            if (bizIsAdminSession(&state->session)) {
+                SwitchMode(dialog, state, GuiMode::AdminStatistics);
+            } else if (bizIsUserSession(&state->session)) {
+                SwitchMode(dialog, state, GuiMode::UserRefund);
+            }
             return TRUE;
         case IDC_AMS_NAV_REFUND:
-            SwitchFeature(dialog, state, GuiFeature::Refund);
+            if (bizIsAdminSession(&state->session)) {
+                LogoutToLogin(dialog, state);
+            } else if (bizIsUserSession(&state->session)) {
+                SwitchMode(dialog, state, GuiMode::UserCancel);
+            }
             return TRUE;
         case IDC_AMS_NAV_CANCEL_CARD:
-            SwitchFeature(dialog, state, GuiFeature::CancelCard);
-            return TRUE;
-        case IDC_AMS_NAV_BILLING:
-            SwitchFeature(dialog, state, GuiFeature::Billing);
-            return TRUE;
-        case IDC_AMS_NAV_STAT:
-            SwitchFeature(dialog, state, GuiFeature::Statistics);
+            if (bizIsUserSession(&state->session)) {
+                LogoutToLogin(dialog, state);
+            }
             return TRUE;
         case IDC_AMS_NAV_EXIT:
             EndDialog(dialog, 0);
             return TRUE;
-        case IDC_AMS_SUBMIT:
-            ExecuteCurrentFeature(dialog, state);
-            return TRUE;
         default:
-            break;
+            return FALSE;
         }
-        break;
     case WM_CLOSE:
         EndDialog(dialog, 0);
         return TRUE;
     default:
-        break;
+        return FALSE;
     }
-
-    return FALSE;
 }
 
 INT_PTR RunMainGuiDialog(HINSTANCE instanceHandle, int showCommand)
