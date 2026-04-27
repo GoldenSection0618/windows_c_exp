@@ -40,6 +40,19 @@ typedef enum BizResult {
     BIZ_ERR_CARD_STATUS_INVALID_FOR_CANCEL = -26
 } BizResult;
 
+typedef enum LoginRole {
+    LOGIN_ROLE_NONE = 0,
+    LOGIN_ROLE_ADMIN = 1,
+    LOGIN_ROLE_USER = 2
+} LoginRole;
+
+typedef struct LoginSession {
+    LoginRole role;
+    int loggedIn;
+    char cardName[CARD_NAME_MAX_LEN + 1];
+    char password[CARD_PWD_MAX_LEN + 1];
+} LoginSession;
+
 typedef struct BillingQueryResult {
     Billing *items;
     size_t count;
@@ -50,6 +63,50 @@ typedef struct BillingStatistics {
     int32_t totalAmountCent;
     int32_t monthlyAmountCent[12];
 } BillingStatistics;
+
+void bizInitSession(LoginSession *session);
+void bizLogout(LoginSession *session);
+int bizIsAdminSession(const LoginSession *session);
+int bizIsUserSession(const LoginSession *session);
+BizResult bizAdminLogin(const char *accountInput, const char *passwordInput, LoginSession *session);
+BizResult bizUserRegister(const char *cardNameInput, const char *passwordInput, Card *createdCard);
+BizResult bizUserLogin(const char *cardNameInput, const char *passwordInput, LoginSession *session);
+
+BizResult bizAdminQueryCard(const LoginSession *session, const char *cardNameInput, Card *queriedCard);
+BizResult bizAdminStopBilling(const LoginSession *session,
+                              const char *cardNameInput,
+                              time_t requestTime,
+                              SettleInfo *settleInfo);
+BizResult bizAdminRecharge(const LoginSession *session,
+                           const char *cardNameInput,
+                           const char *amountInput,
+                           Money *rechargeRecord,
+                           Card *updatedCard);
+BizResult bizAdminRefundByAmount(const LoginSession *session,
+                                 const char *cardNameInput,
+                                 const char *amountInput,
+                                 Money *refundRecord,
+                                 Card *updatedCard);
+BizResult bizAdminGetBillingStatistics(const LoginSession *session,
+                                       const char *yearInput,
+                                       BillingStatistics *statistics);
+
+BizResult bizUserQueryBalance(const LoginSession *session, Card *queriedCard);
+BizResult bizUserStartBilling(const LoginSession *session, time_t requestTime, LogonInfo *logonInfo);
+BizResult bizUserStopBilling(const LoginSession *session, time_t requestTime, SettleInfo *settleInfo);
+BizResult bizUserRecharge(const LoginSession *session,
+                          const char *amountInput,
+                          Money *rechargeRecord,
+                          Card *updatedCard);
+BizResult bizUserRefundByAmount(const LoginSession *session,
+                                const char *amountInput,
+                                Money *refundRecord,
+                                Card *updatedCard);
+BizResult bizUserCancelCardWithPassword(const LoginSession *session,
+                                        const char *cardNameInput,
+                                        const char *passwordInput,
+                                        Money *refundRecord,
+                                        Card *updatedCard);
 
 BizResult bizAddCard(const char *cardNameInput, const char *passwordInput, const char *amountInput, Card *createdCard);
 BizResult bizQueryCard(const char *cardNameInput, Card *queriedCard);
