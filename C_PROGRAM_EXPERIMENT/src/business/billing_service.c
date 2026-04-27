@@ -107,6 +107,282 @@ static BizResult parseStatisticsYear(const char *yearInput, int *year)
     return BIZ_OK;
 }
 
+static void clearSession(LoginSession *session)
+{
+    if (session == NULL) {
+        return;
+    }
+
+    memset(session, 0, sizeof(*session));
+    session->role = LOGIN_ROLE_NONE;
+    session->loggedIn = 0;
+}
+
+static int isAdminSessionValid(const LoginSession *session)
+{
+    return session != NULL && session->loggedIn != 0 && session->role == LOGIN_ROLE_ADMIN;
+}
+
+static int isUserSessionValid(const LoginSession *session)
+{
+    return session != NULL && session->loggedIn != 0 && session->role == LOGIN_ROLE_USER;
+}
+
+static BizResult getCardPasswordByName(const char *cardNameInput, char *passwordBuffer, size_t passwordBufferSize)
+{
+    Card card;
+    BizResult result = BIZ_OK;
+
+    if (passwordBuffer == NULL || passwordBufferSize == 0) {
+        return BIZ_ERR_SYSTEM;
+    }
+
+    result = bizQueryCard(cardNameInput, &card);
+    if (result != BIZ_OK) {
+        return result;
+    }
+
+    if (snprintf(passwordBuffer, passwordBufferSize, "%s", card.aPwd) < 0) {
+        return BIZ_ERR_SYSTEM;
+    }
+
+    return BIZ_OK;
+}
+
+void bizInitSession(LoginSession *session)
+{
+    clearSession(session);
+}
+
+void bizLogout(LoginSession *session)
+{
+    clearSession(session);
+}
+
+int bizIsAdminSession(const LoginSession *session)
+{
+    return isAdminSessionValid(session);
+}
+
+int bizIsUserSession(const LoginSession *session)
+{
+    return isUserSessionValid(session);
+}
+
+BizResult bizAdminLogin(const char *accountInput, const char *passwordInput, LoginSession *session)
+{
+    char account[INPUT_BUF_SIZE];
+    char password[INPUT_BUF_SIZE];
+
+    if (session == NULL) {
+        return BIZ_ERR_SYSTEM;
+    }
+
+    if (validatorNormalizeInput(accountInput, account, sizeof(account)) != 0 ||
+        validatorNormalizeInput(passwordInput, password, sizeof(password)) != 0) {
+        return BIZ_ERR_WRONG_PASSWORD;
+    }
+
+    if (strcmp(account, "root") != 0 || strcmp(password, "root") != 0) {
+        return BIZ_ERR_WRONG_PASSWORD;
+    }
+
+    clearSession(session);
+    session->role = LOGIN_ROLE_ADMIN;
+    session->loggedIn = 1;
+    return BIZ_OK;
+}
+
+BizResult bizUserRegister(const char *cardNameInput, const char *passwordInput, Card *createdCard)
+{
+    return bizAddCard(cardNameInput, passwordInput, "100", createdCard);
+}
+
+BizResult bizUserLogin(const char *cardNameInput, const char *passwordInput, LoginSession *session)
+{
+    char password[INPUT_BUF_SIZE];
+    Card card;
+    BizResult result = BIZ_OK;
+
+    if (session == NULL) {
+        return BIZ_ERR_SYSTEM;
+    }
+
+    if (validatorNormalizeInput(passwordInput, password, sizeof(password)) != 0 ||
+        !validatorIsValidPassword(password)) {
+        return BIZ_ERR_WRONG_PASSWORD;
+    }
+
+    result = bizQueryCard(cardNameInput, &card);
+    if (result != BIZ_OK) {
+        return result;
+    }
+
+    if (strcmp(card.aPwd, password) != 0) {
+        return BIZ_ERR_WRONG_PASSWORD;
+    }
+
+    clearSession(session);
+    session->role = LOGIN_ROLE_USER;
+    session->loggedIn = 1;
+    snprintf(session->cardName, sizeof(session->cardName), "%s", card.aCardName);
+    snprintf(session->password, sizeof(session->password), "%s", card.aPwd);
+    return BIZ_OK;
+}
+
+BizResult bizAdminQueryCard(const LoginSession *session, const char *cardNameInput, Card *queriedCard)
+{
+    if (!isAdminSessionValid(session)) {
+        return BIZ_ERR_SYSTEM;
+    }
+
+    return bizQueryCard(cardNameInput, queriedCard);
+}
+
+BizResult bizAdminStopBilling(const LoginSession *session,
+                              const char *cardNameInput,
+                              time_t requestTime,
+                              SettleInfo *settleInfo)
+{
+    char password[INPUT_BUF_SIZE];
+    BizResult result = BIZ_OK;
+
+    if (!isAdminSessionValid(session)) {
+        return BIZ_ERR_SYSTEM;
+    }
+
+    result = getCardPasswordByName(cardNameInput, password, sizeof(password));
+    if (result != BIZ_OK) {
+        return result;
+    }
+
+    return bizStopBilling(cardNameInput, password, requestTime, settleInfo);
+}
+
+BizResult bizAdminRecharge(const LoginSession *session,
+                           const char *cardNameInput,
+                           const char *amountInput,
+                           Money *rechargeRecord,
+                           Card *updatedCard)
+{
+    char password[INPUT_BUF_SIZE];
+    BizResult result = BIZ_OK;
+
+    if (!isAdminSessionValid(session)) {
+        return BIZ_ERR_SYSTEM;
+    }
+
+    result = getCardPasswordByName(cardNameInput, password, sizeof(password));
+    if (result != BIZ_OK) {
+        return result;
+    }
+
+    return bizRecharge(cardNameInput, password, amountInput, rechargeRecord, updatedCard);
+}
+
+BizResult bizAdminRefundByAmount(const LoginSession *session,
+                                 const char *cardNameInput,
+                                 const char *amountInput,
+                                 Money *refundRecord,
+                                 Card *updatedCard)
+{
+    char password[INPUT_BUF_SIZE];
+    BizResult result = BIZ_OK;
+
+    if (!isAdminSessionValid(session)) {
+        return BIZ_ERR_SYSTEM;
+    }
+
+    result = getCardPasswordByName(cardNameInput, password, sizeof(password));
+    if (result != BIZ_OK) {
+        return result;
+    }
+
+    return bizRefundByAmount(cardNameInput, password, amountInput, refundRecord, updatedCard);
+}
+
+BizResult bizAdminGetBillingStatistics(const LoginSession *session,
+                                       const char *yearInput,
+                                       BillingStatistics *statistics)
+{
+    if (!isAdminSessionValid(session)) {
+        return BIZ_ERR_SYSTEM;
+    }
+
+    return bizGetBillingStatistics(yearInput, statistics);
+}
+
+BizResult bizUserQueryBalance(const LoginSession *session, Card *queriedCard)
+{
+    if (!isUserSessionValid(session)) {
+        return BIZ_ERR_SYSTEM;
+    }
+
+    return bizQueryCard(session->cardName, queriedCard);
+}
+
+BizResult bizUserStartBilling(const LoginSession *session, time_t requestTime, LogonInfo *logonInfo)
+{
+    if (!isUserSessionValid(session)) {
+        return BIZ_ERR_SYSTEM;
+    }
+
+    return bizStartBilling(session->cardName, session->password, requestTime, logonInfo);
+}
+
+BizResult bizUserStopBilling(const LoginSession *session, time_t requestTime, SettleInfo *settleInfo)
+{
+    if (!isUserSessionValid(session)) {
+        return BIZ_ERR_SYSTEM;
+    }
+
+    return bizStopBilling(session->cardName, session->password, requestTime, settleInfo);
+}
+
+BizResult bizUserRecharge(const LoginSession *session,
+                          const char *amountInput,
+                          Money *rechargeRecord,
+                          Card *updatedCard)
+{
+    if (!isUserSessionValid(session)) {
+        return BIZ_ERR_SYSTEM;
+    }
+
+    return bizRecharge(session->cardName, session->password, amountInput, rechargeRecord, updatedCard);
+}
+
+BizResult bizUserRefundByAmount(const LoginSession *session,
+                                const char *amountInput,
+                                Money *refundRecord,
+                                Card *updatedCard)
+{
+    if (!isUserSessionValid(session)) {
+        return BIZ_ERR_SYSTEM;
+    }
+
+    return bizRefundByAmount(session->cardName, session->password, amountInput, refundRecord, updatedCard);
+}
+
+BizResult bizUserCancelCardWithPassword(const LoginSession *session,
+                                        const char *cardNameInput,
+                                        const char *passwordInput,
+                                        Money *refundRecord,
+                                        Card *updatedCard)
+{
+    char cardName[INPUT_BUF_SIZE];
+
+    if (!isUserSessionValid(session)) {
+        return BIZ_ERR_SYSTEM;
+    }
+
+    if (validatorNormalizeInput(cardNameInput, cardName, sizeof(cardName)) != 0 ||
+        strcmp(cardName, session->cardName) != 0) {
+        return BIZ_ERR_WRONG_PASSWORD;
+    }
+
+    return bizCancelCard(cardNameInput, passwordInput, refundRecord, updatedCard);
+}
+
 BizResult bizAddCard(const char *cardNameInput, const char *passwordInput, const char *amountInput, Card *createdCard)
 {
     char cardName[INPUT_BUF_SIZE];

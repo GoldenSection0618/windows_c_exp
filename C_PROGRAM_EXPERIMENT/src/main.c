@@ -6,10 +6,12 @@
 #include <stdio.h>
 #include <time.h>
 
+#define INPUT_BUF_SIZE 256
+
 static void showEntryMenu(void)
 {
     printf("%s\n", "37-1023007337-杨立晗-软件2301");
-    printf("========== 计费管理系统 ==========\n");
+    printf("========== 计费管理系统 ==========%s\n", "");
     printf("1. 管理员登录\n");
     printf("2. 用户注册\n");
     printf("3. 用户登录\n");
@@ -18,7 +20,7 @@ static void showEntryMenu(void)
 
 static void showAdminMenu(void)
 {
-    printf("========== 管理员后台 ==========\n");
+    printf("========== 管理员后台 ==========%s\n", "");
     printf("1. 查询卡\n");
     printf("2. 下机\n");
     printf("3. 充值\n");
@@ -29,7 +31,7 @@ static void showAdminMenu(void)
 
 static void showUserMenu(const LoginSession *session)
 {
-    printf("========== 用户中心 ==========\n");
+    printf("========== 用户中心 ==========%s\n", "");
     printf("当前登录卡号：%s\n", session->cardName);
     printf("1. 查余额\n");
     printf("2. 上机\n");
@@ -234,7 +236,7 @@ static void handleAdminStatistics(const LoginSession *session)
         return;
     }
 
-    printf("========== 营业额统计 ==========\n");
+    printf("========== 营业额统计 ==========%s\n", "");
     printf("年份：%d\n", statistics.year);
     printf("总营业额：%.2f 元\n", statistics.totalAmountCent / 100.0);
     for (i = 0; i < 12; i++) {
