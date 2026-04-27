@@ -553,7 +553,7 @@ const char *bizGetMessage(BizResult result)
     case BIZ_ERR_CARD_CANCELED_FOR_START:
         return "该卡已注销，不能上机！";
     case BIZ_ERR_BALANCE_NOT_ENOUGH:
-        return "余额不足，不能上机！";
+        return "卡号余额不足！";
     case BIZ_ERR_NO_UNSETTLED_BILLING:
         return "未找到该卡的未结算消费记录！";
     case BIZ_ERR_CARD_STATUS_INVALID_FOR_STOP:
