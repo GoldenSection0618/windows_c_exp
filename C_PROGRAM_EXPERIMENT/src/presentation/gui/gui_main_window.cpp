@@ -53,6 +53,35 @@ static int MaxInt(int value, int minValue)
     return value < minValue ? minValue : value;
 }
 
+static int DialogUnitToPixelX(HWND dialog, int value)
+{
+    RECT rect = {0, 0, value, 0};
+    MapDialogRect(dialog, &rect);
+    return rect.right;
+}
+
+static int DialogUnitToPixelY(HWND dialog, int value)
+{
+    RECT rect = {0, 0, 0, value};
+    MapDialogRect(dialog, &rect);
+    return rect.bottom;
+}
+
+static void MoveControlDlu(HWND dialog, int controlId, int x, int y, int width, int height)
+{
+    HWND control = GetDlgItem(dialog, controlId);
+    if (control == nullptr) {
+        return;
+    }
+
+    MoveWindow(control,
+        DialogUnitToPixelX(dialog, x),
+        DialogUnitToPixelY(dialog, y),
+        DialogUnitToPixelX(dialog, width),
+        DialogUnitToPixelY(dialog, height),
+        TRUE);
+}
+
 static void InitializeLayoutMetrics(HWND dialog, GuiState *state)
 {
     if (state == nullptr || state->layoutInitialized) {
@@ -69,47 +98,6 @@ static void InitializeLayoutMetrics(HWND dialog, GuiState *state)
 
 static void UpdateMainLayout(HWND dialog, GuiState *state, int clientWidth, int clientHeight)
 {
-    const int navX = 6;
-    const int navY = 6;
-    const int navWidth = 120;
-    const int navBottomMargin = 6;
-
-    const int contentGap = 14;
-    const int rightMargin = 30;
-    const int rowGap = 10;
-    const int contentX = navX + navWidth + contentGap;
-
-    const int labelY = 20;
-    const int labelHeight = 16;
-    const int editY = 38;
-    const int editHeight = 24;
-    const int submitY = 72;
-    const int submitWidth = 80;
-    const int submitHeight = 26;
-    const int statusY = 78;
-    const int statusHeight = 20;
-    const int listY = 110;
-    const int listBottomMargin = 10;
-
-    HWND label1Handle = nullptr;
-    HWND cardNameHandle = nullptr;
-    HWND label2Handle = nullptr;
-    HWND cardPasswordHandle = nullptr;
-    HWND label3Handle = nullptr;
-    HWND cardMoneyHandle = nullptr;
-    HWND submitHandle = nullptr;
-    HWND statusHandle = nullptr;
-    int contentWidth = 0;
-    int columnWidth = 0;
-    int columnX1 = 0;
-    int columnX2 = 0;
-    int columnX3 = 0;
-    int submitX = 0;
-    int statusX = 0;
-    int statusWidth = 0;
-    int navHeight = 0;
-    int listHeight = 0;
-
     if (state == nullptr) {
         return;
     }
@@ -122,14 +110,15 @@ static void UpdateMainLayout(HWND dialog, GuiState *state, int clientWidth, int 
         return;
     }
 
-    label1Handle = GetDlgItem(dialog, IDC_AMS_LABEL_1);
-    cardNameHandle = GetDlgItem(dialog, IDC_AMS_CARD_NAME);
-    label2Handle = GetDlgItem(dialog, IDC_AMS_LABEL_2);
-    cardPasswordHandle = GetDlgItem(dialog, IDC_AMS_CARD_PASSWORD);
-    label3Handle = GetDlgItem(dialog, IDC_AMS_LABEL_3);
-    cardMoneyHandle = GetDlgItem(dialog, IDC_AMS_CARD_MONEY);
-    submitHandle = GetDlgItem(dialog, IDC_AMS_SUBMIT);
-    statusHandle = GetDlgItem(dialog, IDC_AMS_STATUS_TEXT);
+    HWND label1Handle = GetDlgItem(dialog, IDC_AMS_LABEL_1);
+    HWND cardNameHandle = GetDlgItem(dialog, IDC_AMS_CARD_NAME);
+    HWND label2Handle = GetDlgItem(dialog, IDC_AMS_LABEL_2);
+    HWND cardPasswordHandle = GetDlgItem(dialog, IDC_AMS_CARD_PASSWORD);
+    HWND label3Handle = GetDlgItem(dialog, IDC_AMS_LABEL_3);
+    HWND cardMoneyHandle = GetDlgItem(dialog, IDC_AMS_CARD_MONEY);
+    HWND submitHandle = GetDlgItem(dialog, IDC_AMS_SUBMIT);
+    HWND statusHandle = GetDlgItem(dialog, IDC_AMS_STATUS_TEXT);
+
     if (label1Handle == nullptr || cardNameHandle == nullptr ||
         label2Handle == nullptr || cardPasswordHandle == nullptr ||
         label3Handle == nullptr || cardMoneyHandle == nullptr ||
@@ -138,21 +127,61 @@ static void UpdateMainLayout(HWND dialog, GuiState *state, int clientWidth, int 
         return;
     }
 
-    contentWidth = MaxInt(clientWidth - contentX - rightMargin, 210);
-    columnWidth = MaxInt((contentWidth - rowGap * 2) / 3, 60);
+    const int navX = DialogUnitToPixelX(dialog, 6);
+    const int navY = DialogUnitToPixelY(dialog, 6);
+    const int navWidth = DialogUnitToPixelX(dialog, 120);
+    const int navBottomMargin = DialogUnitToPixelY(dialog, 6);
 
-    columnX1 = contentX;
-    columnX2 = columnX1 + columnWidth + rowGap;
-    columnX3 = columnX2 + columnWidth + rowGap;
+    const int navButtonX = 16;
+    const int navButtonWidth = 100;
+    const int navButtonHeight = 24;
 
-    submitX = contentX;
-    statusX = submitX + submitWidth + rowGap;
+    const int contentGap = DialogUnitToPixelX(dialog, 14);
+    const int rightMargin = DialogUnitToPixelX(dialog, 30);
+    const int rowGap = DialogUnitToPixelX(dialog, 10);
+    const int contentX = navX + navWidth + contentGap;
 
-    navHeight = MaxInt(clientHeight - navY - navBottomMargin, 80);
-    statusWidth = MaxInt(contentX + contentWidth - statusX, 80);
-    listHeight = MaxInt(clientHeight - listY - listBottomMargin, 120);
+    const int labelY = DialogUnitToPixelY(dialog, 20);
+    const int labelHeight = DialogUnitToPixelY(dialog, 16);
+    const int editY = DialogUnitToPixelY(dialog, 38);
+    const int editHeight = DialogUnitToPixelY(dialog, 24);
+
+    const int submitY = DialogUnitToPixelY(dialog, 72);
+    const int submitWidth = DialogUnitToPixelX(dialog, 80);
+    const int submitHeight = DialogUnitToPixelY(dialog, 26);
+
+    const int statusY = DialogUnitToPixelY(dialog, 78);
+    const int statusHeight = DialogUnitToPixelY(dialog, 20);
+
+    const int listY = DialogUnitToPixelY(dialog, 110);
+    const int listBottomMargin = DialogUnitToPixelY(dialog, 10);
+
+    int contentWidth = MaxInt(clientWidth - contentX - rightMargin, DialogUnitToPixelX(dialog, 260));
+    int columnWidth = MaxInt((contentWidth - rowGap * 2) / 3, DialogUnitToPixelX(dialog, 70));
+
+    int columnX1 = contentX;
+    int columnX2 = columnX1 + columnWidth + rowGap;
+    int columnX3 = columnX2 + columnWidth + rowGap;
+
+    int submitX = contentX;
+    int statusX = submitX + submitWidth + rowGap;
+    int statusWidth = MaxInt(contentX + contentWidth - statusX, DialogUnitToPixelX(dialog, 120));
+
+    int navHeight = MaxInt(clientHeight - navY - navBottomMargin, DialogUnitToPixelY(dialog, 80));
+    int listHeight = MaxInt(clientHeight - listY - listBottomMargin, DialogUnitToPixelY(dialog, 120));
 
     MoveWindow(state->navBackgroundHandle, navX, navY, navWidth, navHeight, TRUE);
+
+    MoveControlDlu(dialog, IDC_AMS_NAV_ADD_CARD, navButtonX, 18, navButtonWidth, navButtonHeight);
+    MoveControlDlu(dialog, IDC_AMS_NAV_QUERY_CARD, navButtonX, 50, navButtonWidth, navButtonHeight);
+    MoveControlDlu(dialog, IDC_AMS_NAV_LOGON, navButtonX, 82, navButtonWidth, navButtonHeight);
+    MoveControlDlu(dialog, IDC_AMS_NAV_SETTLE, navButtonX, 114, navButtonWidth, navButtonHeight);
+    MoveControlDlu(dialog, IDC_AMS_NAV_RECHARGE, navButtonX, 146, navButtonWidth, navButtonHeight);
+    MoveControlDlu(dialog, IDC_AMS_NAV_REFUND, navButtonX, 178, navButtonWidth, navButtonHeight);
+    MoveControlDlu(dialog, IDC_AMS_NAV_CANCEL_CARD, navButtonX, 210, navButtonWidth, navButtonHeight);
+    MoveControlDlu(dialog, IDC_AMS_NAV_BILLING, navButtonX, 242, navButtonWidth, navButtonHeight);
+    MoveControlDlu(dialog, IDC_AMS_NAV_STAT, navButtonX, 274, navButtonWidth, navButtonHeight);
+    MoveControlDlu(dialog, IDC_AMS_NAV_EXIT, navButtonX, 306, navButtonWidth, navButtonHeight);
 
     MoveWindow(label1Handle, columnX1, labelY, columnWidth, labelHeight, TRUE);
     MoveWindow(cardNameHandle, columnX1, editY, columnWidth, editHeight, TRUE);
