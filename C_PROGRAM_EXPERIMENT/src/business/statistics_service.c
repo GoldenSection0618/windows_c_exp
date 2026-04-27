@@ -14,44 +14,53 @@
 #include <string.h>
 #include <time.h>
 
-static BizResult parseStatisticsYear(const char *yearInput, int *year)
+static BizResult parseStatisticsYearMonth(const char *yearMonthInput, int *year, int *month)
 {
-    char yearText[INPUT_BUF_SIZE];
+    char yearMonthText[INPUT_BUF_SIZE];
     char *endptr = NULL;
     long parsedYear = 0;
+    long parsedMonth = 0;
 
-    if (year == NULL) {
+    if (year == NULL || month == NULL) {
         return BIZ_ERR_SYSTEM;
     }
 
-    if (validatorNormalizeInput(yearInput, yearText, sizeof(yearText)) != 0 || yearText[0] == '\0') {
+    if (validatorNormalizeInput(yearMonthInput, yearMonthText, sizeof(yearMonthText)) != 0 ||
+        yearMonthText[0] == '\0') {
         return BIZ_ERR_INVALID_TIME_RANGE;
     }
 
     errno = 0;
-    parsedYear = strtol(yearText, &endptr, 10);
-    if (errno != 0 || endptr == yearText || *endptr != '\0') {
+    parsedYear = strtol(yearMonthText, &endptr, 10);
+    if (errno != 0 || endptr == yearMonthText || *endptr != '-') {
         return BIZ_ERR_INVALID_TIME_RANGE;
     }
 
-    if (parsedYear < 1970 || parsedYear > 9999) {
+    errno = 0;
+    parsedMonth = strtol(endptr + 1, &endptr, 10);
+    if (errno != 0 || *endptr != '\0') {
+        return BIZ_ERR_INVALID_TIME_RANGE;
+    }
+
+    if (parsedYear < 1970 || parsedYear > 9999 || parsedMonth < 1 || parsedMonth > 12) {
         return BIZ_ERR_INVALID_TIME_RANGE;
     }
 
     *year = (int)parsedYear;
+    *month = (int)parsedMonth;
     return BIZ_OK;
 }
 
 
 BizResult bizAdminGetBillingStatistics(const LoginSession *session,
-                                       const char *yearInput,
+                                       const char *yearMonthInput,
                                        BillingStatistics *statistics)
 {
     if (!bizIsAdminSession(session)) {
         return BIZ_ERR_SYSTEM;
     }
 
-    return bizGetBillingStatistics(yearInput, statistics);
+    return bizGetBillingStatistics(yearMonthInput, statistics);
 }
 
 
@@ -138,12 +147,13 @@ void bizFreeBillingQueryResult(BillingQueryResult *result)
 }
 
 
-BizResult bizGetBillingStatistics(const char *yearInput, BillingStatistics *statistics)
+BizResult bizGetBillingStatistics(const char *yearMonthInput, BillingStatistics *statistics)
 {
     Billing *records = NULL;
     size_t count = 0;
     size_t index = 0;
     int targetYear = 0;
+    int targetMonth = 0;
     DataResult dataResult = DATA_OK;
 
     if (statistics == NULL) {
@@ -152,45 +162,45 @@ BizResult bizGetBillingStatistics(const char *yearInput, BillingStatistics *stat
 
     memset(statistics, 0, sizeof(*statistics));
 
-    if (parseStatisticsYear(yearInput, &targetYear) != BIZ_OK) {
+    if (parseStatisticsYearMonth(yearMonthInput, &targetYear, &targetMonth) != BIZ_OK) {
         return BIZ_ERR_INVALID_TIME_RANGE;
     }
 
+    statistics->year = targetYear;
+    statistics->month = targetMonth;
+
     dataResult = dataQueryAllBillings(&records, &count);
     if (dataResult == DATA_ERR_NOT_FOUND || dataResult == DATA_ERR_FILE_NOT_FOUND) {
-        statistics->year = targetYear;
         return BIZ_OK;
     }
     if (dataResult != DATA_OK) {
         return mapDataResult(dataResult);
     }
 
-    statistics->year = targetYear;
     for (index = 0; index < count; index++) {
         struct tm *localValue = NULL;
-        int year = 0;
-        int month = 0;
+        int recordYear = 0;
+        int recordMonth = 0;
 
         if (records[index].nStatus != 1 || records[index].nDel != 0 || records[index].nAmountCent <= 0) {
             continue;
         }
-
-        statistics->totalAmountCent += records[index].nAmountCent;
 
         localValue = localtime(&records[index].tEnd);
         if (localValue == NULL) {
             continue;
         }
 
-        year = localValue->tm_year + 1900;
-        month = localValue->tm_mon;
-        if (year == targetYear && month >= 0 && month < 12) {
-            statistics->monthlyAmountCent[month] += records[index].nAmountCent;
+        recordYear = localValue->tm_year + 1900;
+        recordMonth = localValue->tm_mon + 1;
+        if (recordYear == targetYear && recordMonth == targetMonth) {
+            statistics->totalAmountCent += records[index].nAmountCent;
+            statistics->monthlyAmountCent[targetMonth - 1] += records[index].nAmountCent;
         }
     }
 
     dataFreeQueriedBillings(records);
-    logOperation("营业额统计");
+    logOperation("按月营业额统计");
     return BIZ_OK;
 }
 
