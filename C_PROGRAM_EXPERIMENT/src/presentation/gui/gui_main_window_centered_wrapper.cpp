@@ -316,13 +316,13 @@ static void SwitchMode(HWND dialog, GuiState *state, GuiMode mode)
         SetNavButton(dialog, IDC_AMS_NAV_EXIT, L"", false);
         ConfigureInput(dialog, L"", false, L"", false, L"", false, false);
         SetText(dialog, IDC_AMS_SUBMIT, mode == GuiMode::UserBalance ? L"查询余额" : (mode == GuiMode::UserStart ? L"上机" : L"下机"));
-        SetStatus(dialog, std::wstring(L"用户：当前登录卡号 ") + GuiUtf8ToWide(state->session.cardName) + L"，无需再次输入卡号密码。");
+        SetStatus(dialog, std::wstring(L"用户：当前登录卡号 ") + GuiUtf8ToWide(state->session.cardName) + L"，默认作用于当前卡。");
         break;
     case GuiMode::UserRecharge:
     case GuiMode::UserRefund:
         ConfigureInput(dialog, mode == GuiMode::UserRecharge ? L"充值金额(元)" : L"退费金额(元)", true, L"", false, L"", false, false);
         SetText(dialog, IDC_AMS_SUBMIT, mode == GuiMode::UserRecharge ? L"充值" : L"退费");
-        SetStatus(dialog, L"用户资金操作：默认作用于当前登录卡。");
+        SetStatus(dialog, L"用户资金操作：默认作用于当前卡。");
         break;
     case GuiMode::UserCancel:
         ConfigureInput(dialog, L"确认卡号", true, L"确认密码", true, L"", false, true);
