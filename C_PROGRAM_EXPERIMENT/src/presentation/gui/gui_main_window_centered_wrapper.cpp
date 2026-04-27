@@ -1,16 +1,42 @@
 #include <windows.h>
 
+static BOOL GuiInvalidateWithoutErase(HWND windowHandle, const RECT *rect, BOOL eraseBackground)
+{
+    (void)eraseBackground;
+    return RedrawWindow(windowHandle,
+                        rect,
+                        nullptr,
+                        RDW_INVALIDATE | RDW_ALLCHILDREN | RDW_UPDATENOW) ? TRUE : FALSE;
+}
+
+#define InvalidateRect GuiInvalidateWithoutErase
 #define RunMainGuiDialog RunMainGuiDialog_Uncentered
 #include "gui_main_window_scroll.cpp"
 #undef RunMainGuiDialog
+#undef InvalidateRect
 
 static HHOOK gCenterDialogHook = nullptr;
+
+static void EnableLowFlickerDialogStyles(HWND windowHandle)
+{
+    LONG_PTR style = GetWindowLongPtrW(windowHandle, GWL_STYLE);
+    SetWindowLongPtrW(windowHandle, GWL_STYLE, style | WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
+    SetWindowPos(windowHandle,
+                 nullptr,
+                 0,
+                 0,
+                 0,
+                 0,
+                 SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOSIZE | SWP_FRAMECHANGED);
+}
 
 static void CenterWindowInMonitorWorkArea(HWND windowHandle)
 {
     RECT windowRect = {0};
     MONITORINFO monitorInfo = {0};
     monitorInfo.cbSize = sizeof(monitorInfo);
+
+    EnableLowFlickerDialogStyles(windowHandle);
 
     GetWindowRect(windowHandle, &windowRect);
     HMONITOR monitorHandle = MonitorFromWindow(windowHandle, MONITOR_DEFAULTTONEAREST);
