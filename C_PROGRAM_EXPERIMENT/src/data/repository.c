@@ -5,7 +5,6 @@
 #include "data_file_utils.h"
 
 #include <errno.h>
-#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -20,6 +19,8 @@ static int doesCardNameContainKeyword(const char *cardName, const char *keyword)
 static CardNode *findCardNodeByName(const char *cardName);
 static size_t countCardsByKeyword(const char *keyword);
 static size_t copyCardsByKeyword(const char *keyword, Card *outCards, size_t capacity);
+static size_t countVisibleCards(void);
+static size_t copyVisibleCards(Card *outCards, size_t capacity);
 
 static int isCardNameEqual(const char *a, const char *b)
 {
@@ -223,6 +224,41 @@ static size_t copyCardsByKeyword(const char *keyword, Card *outCards, size_t cap
     while (pCurrent != NULL && count < capacity) {
         if (pCurrent->cardData.nDel == 0 &&
             doesCardNameContainKeyword(pCurrent->cardData.aCardName, keyword)) {
+            outCards[count] = pCurrent->cardData;
+            count++;
+        }
+        pCurrent = pCurrent->pNext;
+    }
+
+    return count;
+}
+
+static size_t countVisibleCards(void)
+{
+    CardNode *pCurrent = g_pCardListHead;
+    size_t count = 0;
+
+    while (pCurrent != NULL) {
+        if (pCurrent->cardData.nDel == 0) {
+            count++;
+        }
+        pCurrent = pCurrent->pNext;
+    }
+
+    return count;
+}
+
+static size_t copyVisibleCards(Card *outCards, size_t capacity)
+{
+    CardNode *pCurrent = g_pCardListHead;
+    size_t count = 0;
+
+    if (outCards == NULL || capacity == 0) {
+        return 0;
+    }
+
+    while (pCurrent != NULL && count < capacity) {
+        if (pCurrent->cardData.nDel == 0) {
             outCards[count] = pCurrent->cardData;
             count++;
         }
@@ -514,6 +550,39 @@ DataResult dataQueryCardsByKeyword(const char *keyword,
     }
 
     return DATA_OK;
+}
+
+DataResult dataQueryAllCards(Card *outCards,
+                             size_t capacity,
+                             size_t *actualCount,
+                             size_t *requiredCount)
+{
+    size_t count = 0;
+
+    if (actualCount == NULL || requiredCount == NULL) {
+        return DATA_ERR_INVALID_ARG;
+    }
+
+    *actualCount = 0;
+    *requiredCount = 0;
+
+    count = countVisibleCards();
+    *requiredCount = count;
+
+    if (count == 0) {
+        return DATA_OK;
+    }
+
+    if (outCards == NULL || capacity == 0) {
+        return DATA_OK;
+    }
+
+    if (capacity < count) {
+        return DATA_ERR_INVALID_ARG;
+    }
+
+    *actualCount = copyVisibleCards(outCards, capacity);
+    return (*actualCount == count) ? DATA_OK : DATA_ERR_INVALID_ARG;
 }
 
 void dataCleanup(void)
