@@ -1,10 +1,7 @@
 #include "card_query.h"
 
 #include "business.h"
-#include "card_repository.h"
-#include "card_storage_file.h"
-#include "card_validator.h"
-#include "common.h"
+#include "card_query_repository.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -19,6 +16,7 @@ static BizResult mapAdvancedQueryDataResult(DataResult result)
     case DATA_ERR_FILE_OPEN:
         return BIZ_ERR_FILE_OPEN;
     case DATA_ERR_FILE_NOT_FOUND:
+    case DATA_ERR_NOT_FOUND:
         return BIZ_ERR_FILE_NOT_FOUND;
     case DATA_ERR_RECORD_FORMAT:
         return BIZ_ERR_RECORD_FORMAT;
@@ -212,15 +210,15 @@ static BizResult normalizeAdvancedQueryOption(const CardQueryOption *input, Card
 BizResult bizQueryCardsAdvanced(const CardQueryOption *option, CardQueryPage *page)
 {
     CardQueryOption normalizedOption;
-    Card *allCards = NULL;
+    Card *snapshotCards = NULL;
     Card *matchedCards = NULL;
-    size_t allCount = 0;
+    size_t snapshotCount = 0;
     size_t matchedCount = 0;
     size_t index = 0;
     size_t start = 0;
     size_t end = 0;
     size_t pageItemCount = 0;
-    int loadResult = 0;
+    DataResult dataResult = DATA_OK;
     BizResult result = BIZ_OK;
 
     if (page == NULL) {
@@ -234,42 +232,27 @@ BizResult bizQueryCardsAdvanced(const CardQueryOption *option, CardQueryPage *pa
         return result;
     }
 
-    loadResult = dataLoadCards();
-    if (loadResult < 0) {
-        return mapAdvancedQueryDataResult((DataResult)loadResult);
-    }
-    allCount = (size_t)loadResult;
-    if (allCount == 0) {
-        return BIZ_ERR_NO_MATCHED_CARD;
+    dataResult = dataQueryAllCardsSnapshot(&snapshotCards, &snapshotCount);
+    if (dataResult != DATA_OK) {
+        return mapAdvancedQueryDataResult(dataResult);
     }
 
-    allCards = (Card *)malloc(allCount * sizeof(Card));
-    matchedCards = (Card *)malloc(allCount * sizeof(Card));
-    if (allCards == NULL || matchedCards == NULL) {
-        free(allCards);
-        free(matchedCards);
+    matchedCards = (Card *)malloc(snapshotCount * sizeof(Card));
+    if (matchedCards == NULL) {
+        dataFreeCardsSnapshot(snapshotCards);
         return BIZ_ERR_NO_MEMORY;
     }
 
-    result = bizQueryCardsByKeyword("a", allCards, allCount, &index, &matchedCount);
-    if (result != BIZ_OK && result != BIZ_ERR_NO_MATCHED_CARD) {
-        free(allCards);
-        free(matchedCards);
-        return result;
-    }
-
-    matchedCount = 0;
-    for (index = 0; index < allCount; index++) {
-        const Card *card = NULL;
-        card = dataQueryCardByName(allCards[index].aCardName);
-        if (card != NULL && isCardMatchedByOption(card, &normalizedOption)) {
-            matchedCards[matchedCount] = *card;
+    for (index = 0; index < snapshotCount; index++) {
+        if (isCardMatchedByOption(&snapshotCards[index], &normalizedOption)) {
+            matchedCards[matchedCount] = snapshotCards[index];
             matchedCount++;
         }
     }
 
+    dataFreeCardsSnapshot(snapshotCards);
+
     if (matchedCount == 0) {
-        free(allCards);
         free(matchedCards);
         return BIZ_ERR_NO_MATCHED_CARD;
     }
@@ -294,7 +277,6 @@ BizResult bizQueryCardsAdvanced(const CardQueryOption *option, CardQueryPage *pa
 
     page->items = (Card *)malloc(pageItemCount * sizeof(Card));
     if (page->items == NULL) {
-        free(allCards);
         free(matchedCards);
         memset(page, 0, sizeof(*page));
         return BIZ_ERR_NO_MEMORY;
@@ -303,7 +285,6 @@ BizResult bizQueryCardsAdvanced(const CardQueryOption *option, CardQueryPage *pa
     memcpy(page->items, matchedCards + start, pageItemCount * sizeof(Card));
     page->itemCount = pageItemCount;
 
-    free(allCards);
     free(matchedCards);
     return BIZ_OK;
 }
