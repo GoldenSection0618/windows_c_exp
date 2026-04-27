@@ -1,6 +1,8 @@
 #include "card_ui.h"
 
 #include "business.h"
+#include "card_query.h"
+#include "card_validator.h"
 #include "card_view.h"
 #include "common.h"
 #include "menu.h"
@@ -8,6 +10,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
+
+#define CARD_QUERY_PAGE_SIZE 5
 
 static const char *getStartBillingMessage(BizResult result)
 {
@@ -85,6 +89,113 @@ static const char *getCancelCardMessage(BizResult result)
     }
 }
 
+static int readMoneyLimitCent(int32_t *limitCent)
+{
+    char amountText[INPUT_BUF_SIZE];
+    MoneyParseResult parseResult = MONEY_PARSE_OK;
+
+    if (readTextInput("请输入低余额阈值（元）：", amountText, sizeof(amountText)) != 0) {
+        return -1;
+    }
+
+    parseResult = validatorParseMoneyToCent(amountText, limitCent);
+    return parseResult == MONEY_PARSE_OK && *limitCent > 0 ? 0 : -1;
+}
+
+static int readAdvancedQueryOption(CardQueryOption *option)
+{
+    int filterChoice = 0;
+    int sortChoice = 0;
+
+    if (option == NULL) {
+        return -1;
+    }
+
+    printf("请选择筛选条件：\n");
+    printf("1. 全部卡\n");
+    printf("2. 只看未上机卡\n");
+    printf("3. 只看正在上机卡\n");
+    printf("4. 只看已注销卡\n");
+    printf("5. 只看余额低于指定金额的卡\n");
+    if (readChoiceInput("请输入筛选编号：", &filterChoice) != 0 ||
+        filterChoice < CARD_QUERY_FILTER_ALL || filterChoice > CARD_QUERY_FILTER_LOW_BALANCE) {
+        printf("筛选编号无效，请输入 1~5。\n");
+        return -1;
+    }
+
+    printf("请选择排序方式：\n");
+    printf("1. 按余额升序\n");
+    printf("2. 按余额降序\n");
+    printf("3. 按使用次数降序\n");
+    printf("4. 按累计消费降序\n");
+    printf("5. 按最后使用时间降序\n");
+    if (readChoiceInput("请输入排序编号：", &sortChoice) != 0 ||
+        sortChoice < CARD_QUERY_SORT_BALANCE_ASC || sortChoice > CARD_QUERY_SORT_LAST_USE_DESC) {
+        printf("排序编号无效，请输入 1~5。\n");
+        return -1;
+    }
+
+    option->filterType = (CardQueryFilterType)filterChoice;
+    option->sortType = (CardQuerySortType)sortChoice;
+    option->lowBalanceLimitCent = 0;
+
+    if (option->filterType == CARD_QUERY_FILTER_LOW_BALANCE && readMoneyLimitCent(&option->lowBalanceLimitCent) != 0) {
+        printf("低余额阈值格式错误，请输入正数金额，例如 10 或 10.50。\n");
+        return -1;
+    }
+
+    return 0;
+}
+
+static void handleAdvancedQueryInteraction(void)
+{
+    CardQueryOption option;
+    Card *cards = NULL;
+    size_t count = 0;
+    size_t pageIndex = 0;
+    size_t totalPages = 0;
+    int command = 0;
+    BizResult result = BIZ_OK;
+
+    if (readAdvancedQueryOption(&option) != 0) {
+        return;
+    }
+
+    result = bizQueryCardsAdvanced(&option, &cards, &count);
+    if (result != BIZ_OK) {
+        printf("%s\n", bizGetMessage(result));
+        return;
+    }
+
+    totalPages = (count + CARD_QUERY_PAGE_SIZE - 1) / CARD_QUERY_PAGE_SIZE;
+    do {
+        viewShowAdvancedQueryPage(cards, count, pageIndex, CARD_QUERY_PAGE_SIZE, &option);
+        printf("1. 下一页  2. 上一页  0. 返回\n");
+        if (readChoiceInput("请选择分页操作：", &command) != 0) {
+            printf("分页操作输入格式错误，请输入 0~2。\n");
+            continue;
+        }
+
+        if (command == 1) {
+            if (pageIndex + 1 < totalPages) {
+                pageIndex++;
+            } else {
+                printf("已经是最后一页。\n");
+            }
+        } else if (command == 2) {
+            if (pageIndex > 0) {
+                pageIndex--;
+            } else {
+                printf("已经是第一页。\n");
+            }
+        } else if (command != 0) {
+            printf("无效分页操作，请输入 0~2。\n");
+        }
+    } while (command != 0);
+
+    bizFreeCardQueryResult(cards);
+}
+
 void handleAddCardInteraction(void)
 {
     char cardName[INPUT_BUF_SIZE];
@@ -130,8 +241,9 @@ void handleQueryCardInteraction(void)
 
     printf("1. 精确查询\n");
     printf("2. 模糊查询\n");
+    printf("3. 条件筛选、排序与分页查询\n");
     if (readChoiceInput("请选择查询方式：", &queryMode) != 0) {
-        printf("查询方式输入格式错误，请输入数字编号（1~2）。\n");
+        printf("查询方式输入格式错误，请输入数字编号（1~3）。\n");
         return;
     }
 
@@ -178,8 +290,11 @@ void handleQueryCardInteraction(void)
         viewShowFuzzyQueryResults(queryText, cards, actualCount);
         free(cards);
         break;
+    case 3:
+        handleAdvancedQueryInteraction();
+        break;
     default:
-        printf("无效查询方式，请输入 1~2。\n");
+        printf("无效查询方式，请输入 1~3。\n");
         return;
     }
 }
