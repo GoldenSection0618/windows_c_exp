@@ -1,11 +1,14 @@
 #include "gui_main_window_internal.h"
 
+#include "card_query.h"
+#include "card_validator.h"
 #include "gui_resource.h"
 #include "gui_utils.h"
 
 #include <windows.h>
 
 #include <ctime>
+#include <cstdlib>
 #include <string>
 
 static std::wstring ReadText(HWND dialog, int controlId)
@@ -31,6 +34,55 @@ static std::wstring ErrorText(BizResult result)
         return L"系统内部错误，或当前登录角色没有权限执行该操作。";
     }
     return GuiUtf8ToWide(bizGetMessage(result));
+}
+
+
+static int ParseGuiInt(const std::string &text, int defaultValue)
+{
+    char *endptr = nullptr;
+    long value = 0;
+
+    if (text.empty()) {
+        return defaultValue;
+    }
+
+    value = strtol(text.c_str(), &endptr, 10);
+    if (endptr == text.c_str() || *endptr != '\0') {
+        return -1;
+    }
+    return static_cast<int>(value);
+}
+
+
+static BizResult BuildAdvancedQueryOption(const std::string &filterText,
+                                          const std::string &sortText,
+                                          const std::string &limitText,
+                                          CardQueryOption *option)
+{
+    int filter = ParseGuiInt(filterText, CARD_QUERY_FILTER_ALL);
+    int sort = ParseGuiInt(sortText, CARD_QUERY_SORT_BALANCE_DESC);
+    int32_t limitCent = 0;
+
+    if (option == nullptr) {
+        return BIZ_ERR_SYSTEM;
+    }
+    if (filter < CARD_QUERY_FILTER_ALL || filter > CARD_QUERY_FILTER_LOW_BALANCE ||
+        sort < CARD_QUERY_SORT_BALANCE_ASC || sort > CARD_QUERY_SORT_LAST_USE_DESC) {
+        return BIZ_ERR_SYSTEM;
+    }
+
+    option->filterType = static_cast<CardQueryFilterType>(filter);
+    option->sortType = static_cast<CardQuerySortType>(sort);
+    option->lowBalanceLimitCent = 0;
+
+    if (option->filterType == CARD_QUERY_FILTER_LOW_BALANCE) {
+        if (limitText.empty() || validatorParseMoneyToCent(limitText.c_str(), &limitCent) != MONEY_PARSE_OK || limitCent <= 0) {
+            return BIZ_ERR_INVALID_AMOUNT;
+        }
+        option->lowBalanceLimitCent = limitCent;
+    }
+
+    return BIZ_OK;
 }
 
 
@@ -86,6 +138,26 @@ void GuiExecuteSubmit(HWND dialog, GuiState *state)
         if (result == BIZ_OK) {
             GuiShowCard(state->listHandle, card);
             SetStatus(dialog, L"查询完成。");
+        } else {
+            SetStatus(dialog, ErrorText(result));
+        }
+        break;
+    }
+    case GuiMode::AdminAdvancedQuery: {
+        CardQueryOption option = {};
+        Card *cards = nullptr;
+        size_t count = 0;
+        result = BuildAdvancedQueryOption(text1, text2, text3, &option);
+        if (result == BIZ_OK) {
+            result = bizAdminQueryCardsAdvanced(&state->session, &option, &cards, &count);
+        }
+        if (result == BIZ_OK) {
+            GuiShowCards(state->listHandle, cards, count);
+            SetStatus(dialog,
+                L"高级查询完成。筛选=" + GuiUtf8ToWide(bizGetCardQueryFilterText(option.filterType)) +
+                L"；排序=" + GuiUtf8ToWide(bizGetCardQuerySortText(option.sortType)) +
+                L"；结果数=" + std::to_wstring(count) + L"。");
+            bizFreeCardQueryResult(cards);
         } else {
             SetStatus(dialog, ErrorText(result));
         }
