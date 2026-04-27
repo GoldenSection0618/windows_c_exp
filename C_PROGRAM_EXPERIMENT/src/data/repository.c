@@ -2,7 +2,7 @@
 #include "card_storage_file.h"
 #include "card_storage.h"
 #include "common.h"
-#include "platform.h"
+#include "data_file_utils.h"
 
 #include <errno.h>
 #include <limits.h>
@@ -13,14 +13,8 @@
 static CardNode *g_pCardListHead = NULL;
 static size_t g_cardCount = 0;
 
-static DataResult stringToTime(const char *text, time_t *outTime);
 static DataResult praseCard(const char *line, Card *outCard);
 static DataResult rewriteCardFile(void);
-static DataResult ensureCardDataDir(void);
-static void trimLineEnding(char *text);
-static void formatTimeString(time_t value, char *buffer, size_t size);
-static int parseIntField(const char *text, int *value);
-static int parseInt32Field(const char *text, int32_t *value);
 static int isCardNameEqual(const char *a, const char *b);
 static int doesCardNameContainKeyword(const char *cardName, const char *keyword);
 static CardNode *findCardNodeByName(const char *cardName);
@@ -62,150 +56,6 @@ static CardNode *findCardNodeByName(const char *cardName)
     return NULL;
 }
 
-static void trimLineEnding(char *text)
-{
-    size_t len = 0;
-
-    if (text == NULL) {
-        return;
-    }
-
-    len = strlen(text);
-    while (len > 0 && (text[len - 1] == '\n' || text[len - 1] == '\r')) {
-        text[len - 1] = '\0';
-        len--;
-    }
-}
-
-static void formatTimeString(time_t value, char *buffer, size_t size)
-{
-    struct tm *localValue = NULL;
-
-    if (buffer == NULL || size == 0) {
-        return;
-    }
-
-    localValue = localtime(&value);
-    if (localValue == NULL) {
-        buffer[0] = '\0';
-        return;
-    }
-
-    if (strftime(buffer, size, "%Y-%m-%d %H:%M:%S", localValue) == 0) {
-        buffer[0] = '\0';
-    }
-}
-
-static int parseIntField(const char *text, int *value)
-{
-    char *endptr = NULL;
-    long parsedValue = 0;
-
-    if (text == NULL || value == NULL || *text == '\0') {
-        return -1;
-    }
-
-    errno = 0;
-    parsedValue = strtol(text, &endptr, 10);
-    if (errno != 0 || endptr == text || *endptr != '\0') {
-        return -1;
-    }
-    if (parsedValue < INT_MIN || parsedValue > INT_MAX) {
-        return -1;
-    }
-
-    *value = (int)parsedValue;
-    return 0;
-}
-
-static int parseInt32Field(const char *text, int32_t *value)
-{
-    char *endptr = NULL;
-    long parsedValue = 0;
-
-    if (text == NULL || value == NULL || *text == '\0') {
-        return -1;
-    }
-
-    errno = 0;
-    parsedValue = strtol(text, &endptr, 10);
-    if (errno != 0 || endptr == text || *endptr != '\0') {
-        return -1;
-    }
-    if (parsedValue < INT32_MIN || parsedValue > INT32_MAX) {
-        return -1;
-    }
-
-    *value = (int32_t)parsedValue;
-    return 0;
-}
-
-static DataResult ensureCardDataDir(void)
-{
-    char dirPath[INPUT_BUF_SIZE];
-    char *slash = NULL;
-
-    snprintf(dirPath, sizeof(dirPath), "%s", CARD_DATA_FILE_PATH);
-    slash = strrchr(dirPath, '/');
-    if (slash == NULL) {
-        return DATA_OK;
-    }
-
-    *slash = '\0';
-    if (dirPath[0] == '\0') {
-        return DATA_OK;
-    }
-
-    if (platformEnsureDirectoryExists(dirPath) != 0) {
-        return DATA_ERR_FILE_OPEN;
-    }
-
-    return DATA_OK;
-}
-
-static DataResult stringToTime(const char *text, time_t *outTime)
-{
-    int year = 0;
-    int month = 0;
-    int day = 0;
-    int hour = 0;
-    int minute = 0;
-    int second = 0;
-    char tail = '\0';
-    struct tm tmValue;
-    time_t parsedTime = 0;
-
-    if (text == NULL || outTime == NULL) {
-        return DATA_ERR_INVALID_ARG;
-    }
-
-    if (sscanf(text, "%d-%d-%d %d:%d:%d%c", &year, &month, &day, &hour, &minute, &second, &tail) != 6) {
-        return DATA_ERR_TIME_PARSE;
-    }
-
-    memset(&tmValue, 0, sizeof(tmValue));
-    tmValue.tm_year = year - 1900;
-    tmValue.tm_mon = month - 1;
-    tmValue.tm_mday = day;
-    tmValue.tm_hour = hour;
-    tmValue.tm_min = minute;
-    tmValue.tm_sec = second;
-    tmValue.tm_isdst = -1;
-
-    parsedTime = mktime(&tmValue);
-    if (parsedTime == (time_t)-1) {
-        return DATA_ERR_TIME_PARSE;
-    }
-
-    if (tmValue.tm_year != year - 1900 || tmValue.tm_mon != month - 1 || tmValue.tm_mday != day ||
-        tmValue.tm_hour != hour || tmValue.tm_min != minute || tmValue.tm_sec != second) {
-        return DATA_ERR_TIME_PARSE;
-    }
-
-    *outTime = parsedTime;
-    return DATA_OK;
-}
-
 static DataResult praseCard(const char *line, Card *outCard)
 {
     char buffer[256];
@@ -222,7 +72,7 @@ static DataResult praseCard(const char *line, Card *outCard)
     if (snprintf(buffer, sizeof(buffer), "%s", line) >= (int)sizeof(buffer)) {
         return DATA_ERR_RECORD_FORMAT;
     }
-    trimLineEnding(buffer);
+    dataTrimLineEnding(buffer);
 
     cursor = buffer;
     for (index = 0; index < 9; index++) {
@@ -253,28 +103,28 @@ static DataResult praseCard(const char *line, Card *outCard)
     if (snprintf(card.aPwd, sizeof(card.aPwd), "%s", fields[1]) >= (int)sizeof(card.aPwd)) {
         return DATA_ERR_RECORD_FORMAT;
     }
-    if (parseIntField(fields[2], &card.nStatus) != 0) {
+    if (dataParseIntField(fields[2], &card.nStatus) != 0) {
         return DATA_ERR_RECORD_FORMAT;
     }
-    if (stringToTime(fields[3], &card.tStart) != DATA_OK) {
+    if (dataStringToTime(fields[3], &card.tStart) != DATA_OK) {
         return DATA_ERR_TIME_PARSE;
     }
-    if (stringToTime(fields[4], &card.tEnd) != DATA_OK) {
+    if (dataStringToTime(fields[4], &card.tEnd) != DATA_OK) {
         return DATA_ERR_TIME_PARSE;
     }
-    if (parseInt32Field(fields[5], &card.nTotalUseCent) != 0) {
+    if (dataParseInt32Field(fields[5], &card.nTotalUseCent) != 0) {
         return DATA_ERR_RECORD_FORMAT;
     }
-    if (stringToTime(fields[6], &card.tLast) != DATA_OK) {
+    if (dataStringToTime(fields[6], &card.tLast) != DATA_OK) {
         return DATA_ERR_TIME_PARSE;
     }
-    if (parseIntField(fields[7], &card.nUseCount) != 0) {
+    if (dataParseIntField(fields[7], &card.nUseCount) != 0) {
         return DATA_ERR_RECORD_FORMAT;
     }
-    if (parseInt32Field(fields[8], &card.nBalanceCent) != 0) {
+    if (dataParseInt32Field(fields[8], &card.nBalanceCent) != 0) {
         return DATA_ERR_RECORD_FORMAT;
     }
-    if (parseIntField(fields[9], &card.nDel) != 0) {
+    if (dataParseIntField(fields[9], &card.nDel) != 0) {
         return DATA_ERR_RECORD_FORMAT;
     }
 
@@ -291,7 +141,7 @@ static DataResult rewriteCardFile(void)
     char lastBuf[CARD_TIME_STR_LEN + 1];
     DataResult ret = DATA_OK;
 
-    ret = ensureCardDataDir();
+    ret = dataEnsureDataDirByFilePath(CARD_DATA_FILE_PATH);
     if (ret != DATA_OK) {
         return ret;
     }
@@ -302,9 +152,9 @@ static DataResult rewriteCardFile(void)
     }
 
     while (pCurrent != NULL) {
-        formatTimeString(pCurrent->cardData.tStart, startBuf, sizeof(startBuf));
-        formatTimeString(pCurrent->cardData.tEnd, endBuf, sizeof(endBuf));
-        formatTimeString(pCurrent->cardData.tLast, lastBuf, sizeof(lastBuf));
+        dataFormatTimeString(pCurrent->cardData.tStart, startBuf, sizeof(startBuf));
+        dataFormatTimeString(pCurrent->cardData.tEnd, endBuf, sizeof(endBuf));
+        dataFormatTimeString(pCurrent->cardData.tLast, lastBuf, sizeof(lastBuf));
 
         if (fprintf(fp,
                     "%s|%s|%d|%s|%s|%d|%s|%d|%d|%d\n",
@@ -460,7 +310,7 @@ DataResult dataSaveCard(const Card *card)
         return DATA_ERR_INVALID_ARG;
     }
 
-    ret = ensureCardDataDir();
+    ret = dataEnsureDataDirByFilePath(CARD_DATA_FILE_PATH);
     if (ret != DATA_OK) {
         return ret;
     }
@@ -470,9 +320,9 @@ DataResult dataSaveCard(const Card *card)
         return DATA_ERR_FILE_OPEN;
     }
 
-    formatTimeString(card->tStart, startBuf, sizeof(startBuf));
-    formatTimeString(card->tEnd, endBuf, sizeof(endBuf));
-    formatTimeString(card->tLast, lastBuf, sizeof(lastBuf));
+    dataFormatTimeString(card->tStart, startBuf, sizeof(startBuf));
+    dataFormatTimeString(card->tEnd, endBuf, sizeof(endBuf));
+    dataFormatTimeString(card->tLast, lastBuf, sizeof(lastBuf));
 
     if (fprintf(fp,
                 "%s|%s|%d|%s|%s|%d|%s|%d|%d|%d\n",
@@ -523,7 +373,7 @@ int dataLoadCards(void)
             return DATA_ERR_RECORD_FORMAT;
         }
 
-        trimLineEnding(line);
+        dataTrimLineEnding(line);
         if (line[0] == '\0') {
             continue;
         }
@@ -576,7 +426,7 @@ int dataGetCardCount(void)
             return DATA_ERR_RECORD_FORMAT;
         }
 
-        trimLineEnding(line);
+        dataTrimLineEnding(line);
         if (line[0] == '\0') {
             continue;
         }

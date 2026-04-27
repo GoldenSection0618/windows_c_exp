@@ -1,4 +1,5 @@
 #include "business.h"
+#include "business_internal.h"
 #include "billing_query_repository.h"
 #include "billing_repository.h"
 #include "billing_rule.h"
@@ -17,28 +18,6 @@
 #include <limits.h>
 #include <string.h>
 #include <time.h>
-
-static BizResult mapDataResult(DataResult result)
-{
-    switch (result) {
-    case DATA_OK:
-        return BIZ_OK;
-    case DATA_ERR_DUPLICATE:
-        return BIZ_ERR_DUPLICATE_CARD;
-    case DATA_ERR_NO_MEMORY:
-        return BIZ_ERR_NO_MEMORY;
-    case DATA_ERR_FILE_OPEN:
-        return BIZ_ERR_FILE_OPEN;
-    case DATA_ERR_FILE_NOT_FOUND:
-        return BIZ_ERR_FILE_NOT_FOUND;
-    case DATA_ERR_RECORD_FORMAT:
-        return BIZ_ERR_RECORD_FORMAT;
-    case DATA_ERR_TIME_PARSE:
-        return BIZ_ERR_TIME_PARSE;
-    default:
-        return BIZ_ERR_SYSTEM;
-    }
-}
 
 static BizResult prepareFuzzyQueryKeyword(const char *keywordInput,
                                           char *keyword,
@@ -126,27 +105,6 @@ static int isAdminSessionValid(const LoginSession *session)
 static int isUserSessionValid(const LoginSession *session)
 {
     return session != NULL && session->loggedIn != 0 && session->role == LOGIN_ROLE_USER;
-}
-
-static BizResult getCardPasswordByName(const char *cardNameInput, char *passwordBuffer, size_t passwordBufferSize)
-{
-    Card card;
-    BizResult result = BIZ_OK;
-
-    if (passwordBuffer == NULL || passwordBufferSize == 0) {
-        return BIZ_ERR_SYSTEM;
-    }
-
-    result = bizQueryCard(cardNameInput, &card);
-    if (result != BIZ_OK) {
-        return result;
-    }
-
-    if (snprintf(passwordBuffer, passwordBufferSize, "%s", card.aPwd) < 0) {
-        return BIZ_ERR_SYSTEM;
-    }
-
-    return BIZ_OK;
 }
 
 void bizInitSession(LoginSession *session)
@@ -251,7 +209,7 @@ BizResult bizAdminStopBilling(const LoginSession *session,
         return BIZ_ERR_SYSTEM;
     }
 
-    result = getCardPasswordByName(cardNameInput, password, sizeof(password));
+    result = bizGetCardPasswordByName(cardNameInput, password, sizeof(password));
     if (result != BIZ_OK) {
         return result;
     }
@@ -272,7 +230,7 @@ BizResult bizAdminRecharge(const LoginSession *session,
         return BIZ_ERR_SYSTEM;
     }
 
-    result = getCardPasswordByName(cardNameInput, password, sizeof(password));
+    result = bizGetCardPasswordByName(cardNameInput, password, sizeof(password));
     if (result != BIZ_OK) {
         return result;
     }
@@ -293,7 +251,7 @@ BizResult bizAdminRefundByAmount(const LoginSession *session,
         return BIZ_ERR_SYSTEM;
     }
 
-    result = getCardPasswordByName(cardNameInput, password, sizeof(password));
+    result = bizGetCardPasswordByName(cardNameInput, password, sizeof(password));
     if (result != BIZ_OK) {
         return result;
     }
@@ -527,66 +485,6 @@ BizResult bizQueryCardsByKeyword(const char *keywordInput,
     return BIZ_OK;
 }
 
-const char *bizGetMessage(BizResult result)
-{
-    switch (result) {
-    case BIZ_OK:
-        return "操作成功。";
-    case BIZ_ERR_INVALID_CARD_NAME:
-        return "卡号输入不合法，应为1~18位，且只能包含大小写字母、数字和 _ @ # $ % !。";
-    case BIZ_ERR_INVALID_PASSWORD:
-        return "密码输入不合法，应为1~8位，且只能包含大小写字母、数字和 _ @ # $ % !。";
-    case BIZ_ERR_INVALID_AMOUNT:
-        return "开卡金额输入不合法，应为非负金额，且最多保留两位小数。";
-    case BIZ_ERR_BALANCE_TOO_LARGE:
-        return "余额过大，卡内余额必须小于1000000元。";
-    case BIZ_ERR_DUPLICATE_CARD:
-        return "卡号已存在，不能重复添加！";
-    case BIZ_ERR_CARD_NOT_FOUND:
-        return "没有该卡的信息！";
-    case BIZ_ERR_NO_MATCHED_CARD:
-        return "没有符合关键字的卡信息！";
-    case BIZ_ERR_WRONG_PASSWORD:
-        return "密码错误！";
-    case BIZ_ERR_CARD_UNAVAILABLE:
-        return "该卡正在使用，不能上机！";
-    case BIZ_ERR_CARD_CANCELED_FOR_START:
-        return "该卡已注销，不能上机！";
-    case BIZ_ERR_BALANCE_NOT_ENOUGH:
-        return "卡号余额不足！";
-    case BIZ_ERR_NO_UNSETTLED_BILLING:
-        return "未找到该卡的未结算消费记录！";
-    case BIZ_ERR_CARD_STATUS_INVALID_FOR_STOP:
-        return "该卡当前不在上机状态，不能下机！";
-    case BIZ_ERR_CARD_CANCELED_FOR_RECHARGE:
-        return "已注销卡不能充值！";
-    case BIZ_ERR_CARD_CANCELED_FOR_REFUND:
-        return "已注销卡不能退费！";
-    case BIZ_ERR_CARD_STATUS_INVALID_FOR_REFUND:
-        return "该卡正在上机，不能退费！";
-    case BIZ_ERR_CARD_CANCELED_FOR_CANCEL:
-        return "该卡已注销，不能重复注销！";
-    case BIZ_ERR_CARD_STATUS_INVALID_FOR_CANCEL:
-        return "该卡正在上机，不能注销！";
-    case BIZ_ERR_INVALID_TIME_RANGE:
-        return "时间范围输入不合法！";
-    case BIZ_ERR_BILLING_RECORD_NOT_FOUND:
-        return "没有找到符合条件的消费记录！";
-    case BIZ_ERR_FILE_OPEN:
-        return "数据文件异常：卡信息文件打开失败。";
-    case BIZ_ERR_FILE_NOT_FOUND:
-        return "数据文件异常：卡信息文件不存在。";
-    case BIZ_ERR_RECORD_FORMAT:
-        return "数据文件内容异常：卡信息文件记录格式错误。";
-    case BIZ_ERR_TIME_PARSE:
-        return "数据文件内容异常：卡信息文件时间字段解析失败。";
-    case BIZ_ERR_NO_MEMORY:
-        return "系统内存不足，无法继续操作。";
-    default:
-        return "系统内部错误。";
-    }
-}
-
 BizResult bizStartBilling(const char *cardNameInput,
                           const char *passwordInput,
                           time_t requestTime,
@@ -793,280 +691,6 @@ BizResult bizStopBilling(const char *cardNameInput,
 
     (void)durationMinutes;
     logOperation("下机");
-    return BIZ_OK;
-}
-
-BizResult bizRecharge(const char *cardNameInput,
-                      const char *passwordInput,
-                      const char *amountInput,
-                      Money *rechargeRecord,
-                      Card *updatedCard)
-{
-    char cardName[INPUT_BUF_SIZE];
-    char password[INPUT_BUF_SIZE];
-    char amountText[INPUT_BUF_SIZE];
-    const Card *card = NULL;
-    Card originalCard;
-    Card rechargedCard;
-    Money money = {0};
-    int cardLoadResult = 0;
-    int32_t amountCent = 0;
-    MoneyParseResult moneyParseResult = MONEY_PARSE_OK;
-    DataResult dataResult = DATA_OK;
-    time_t now = 0;
-
-    if (validatorNormalizeInput(cardNameInput, cardName, sizeof(cardName)) != 0 ||
-        !validatorIsValidCardName(cardName)) {
-        return BIZ_ERR_INVALID_CARD_NAME;
-    }
-
-    if (validatorNormalizeInput(passwordInput, password, sizeof(password)) != 0 ||
-        !validatorIsValidPassword(password)) {
-        return BIZ_ERR_INVALID_PASSWORD;
-    }
-
-    if (validatorNormalizeInput(amountInput, amountText, sizeof(amountText)) != 0) {
-        return BIZ_ERR_INVALID_AMOUNT;
-    }
-
-    moneyParseResult = validatorParseMoneyToCent(amountText, &amountCent);
-    if (moneyParseResult == MONEY_PARSE_INVALID || amountCent <= 0) {
-        return BIZ_ERR_INVALID_AMOUNT;
-    }
-    if (moneyParseResult == MONEY_PARSE_TOO_LARGE) {
-        return BIZ_ERR_BALANCE_TOO_LARGE;
-    }
-
-    cardLoadResult = dataLoadCards();
-    if (cardLoadResult < 0) {
-        return mapDataResult((DataResult)cardLoadResult);
-    }
-
-    card = dataQueryCardByName(cardName);
-    if (card == NULL || card->nDel != 0) {
-        return BIZ_ERR_CARD_NOT_FOUND;
-    }
-    if (strcmp(card->aPwd, password) != 0) {
-        return BIZ_ERR_WRONG_PASSWORD;
-    }
-    if (card->nStatus == CARD_STATUS_CANCELED) {
-        return BIZ_ERR_CARD_CANCELED_FOR_RECHARGE;
-    }
-    if ((int64_t)card->nBalanceCent + amountCent >= MAX_BALANCE_CENT) {
-        return BIZ_ERR_BALANCE_TOO_LARGE;
-    }
-
-    originalCard = *card;
-    rechargedCard = *card;
-    now = time(NULL);
-    rechargedCard.nBalanceCent += amountCent;
-
-    snprintf(money.aCardName, sizeof(money.aCardName), "%s", rechargedCard.aCardName);
-    money.tTime = now;
-    money.nStatus = 0;
-    money.nMoneyCent = amountCent;
-    money.nDel = 0;
-
-    dataResult = dataUpdateCard(&rechargedCard);
-    if (dataResult != DATA_OK) {
-        return mapDataResult(dataResult);
-    }
-
-    dataResult = dataSaveMoney(&money);
-    if (dataResult != DATA_OK) {
-        if (dataUpdateCard(&originalCard) != DATA_OK) {
-            return BIZ_ERR_SYSTEM;
-        }
-        return mapDataResult(dataResult);
-    }
-
-    if (rechargeRecord != NULL) {
-        *rechargeRecord = money;
-    }
-    if (updatedCard != NULL) {
-        *updatedCard = rechargedCard;
-    }
-
-    logOperation("充值");
-    return BIZ_OK;
-}
-
-BizResult bizRefund(const char *cardNameInput,
-                    const char *passwordInput,
-                    Money *refundRecord,
-                    Card *updatedCard)
-{
-    char cardName[INPUT_BUF_SIZE];
-    char password[INPUT_BUF_SIZE];
-    const Card *card = NULL;
-    Card originalCard;
-    Card refundedCard;
-    Money money = {0};
-    int cardLoadResult = 0;
-    int32_t refundAmountCent = 0;
-    DataResult dataResult = DATA_OK;
-    time_t now = 0;
-
-    if (validatorNormalizeInput(cardNameInput, cardName, sizeof(cardName)) != 0 ||
-        !validatorIsValidCardName(cardName)) {
-        return BIZ_ERR_INVALID_CARD_NAME;
-    }
-
-    if (validatorNormalizeInput(passwordInput, password, sizeof(password)) != 0 ||
-        !validatorIsValidPassword(password)) {
-        return BIZ_ERR_INVALID_PASSWORD;
-    }
-
-    cardLoadResult = dataLoadCards();
-    if (cardLoadResult < 0) {
-        return mapDataResult((DataResult)cardLoadResult);
-    }
-
-    card = dataQueryCardByName(cardName);
-    if (card == NULL || card->nDel != 0) {
-        return BIZ_ERR_CARD_NOT_FOUND;
-    }
-    if (strcmp(card->aPwd, password) != 0) {
-        return BIZ_ERR_WRONG_PASSWORD;
-    }
-    if (card->nStatus == CARD_STATUS_CANCELED) {
-        return BIZ_ERR_CARD_CANCELED_FOR_REFUND;
-    }
-    if (!isRefundAllowedStatus(card->nStatus)) {
-        return BIZ_ERR_CARD_STATUS_INVALID_FOR_REFUND;
-    }
-    if (card->nBalanceCent <= 0) {
-        return BIZ_ERR_BALANCE_NOT_ENOUGH;
-    }
-
-    refundAmountCent = card->nBalanceCent;
-    originalCard = *card;
-    refundedCard = *card;
-    now = time(NULL);
-    refundedCard.nBalanceCent = 0;
-
-    snprintf(money.aCardName, sizeof(money.aCardName), "%s", refundedCard.aCardName);
-    money.tTime = now;
-    money.nStatus = 1;
-    money.nMoneyCent = refundAmountCent;
-    money.nDel = 0;
-
-    dataResult = dataUpdateCard(&refundedCard);
-    if (dataResult != DATA_OK) {
-        return mapDataResult(dataResult);
-    }
-
-    dataResult = dataSaveMoney(&money);
-    if (dataResult != DATA_OK) {
-        if (dataUpdateCard(&originalCard) != DATA_OK) {
-            return BIZ_ERR_SYSTEM;
-        }
-        return mapDataResult(dataResult);
-    }
-
-    if (refundRecord != NULL) {
-        *refundRecord = money;
-    }
-    if (updatedCard != NULL) {
-        *updatedCard = refundedCard;
-    }
-
-    logOperation("退费");
-    return BIZ_OK;
-}
-
-BizResult bizRefundByAmount(const char *cardNameInput,
-                            const char *passwordInput,
-                            const char *amountInput,
-                            Money *refundRecord,
-                            Card *updatedCard)
-{
-    char cardName[INPUT_BUF_SIZE];
-    char password[INPUT_BUF_SIZE];
-    char amountText[INPUT_BUF_SIZE];
-    const Card *card = NULL;
-    Card originalCard;
-    Card refundedCard;
-    Money money = {0};
-    int cardLoadResult = 0;
-    int32_t refundAmountCent = 0;
-    MoneyParseResult moneyParseResult = MONEY_PARSE_OK;
-    DataResult dataResult = DATA_OK;
-    time_t now = 0;
-
-    if (validatorNormalizeInput(cardNameInput, cardName, sizeof(cardName)) != 0 ||
-        !validatorIsValidCardName(cardName)) {
-        return BIZ_ERR_INVALID_CARD_NAME;
-    }
-
-    if (validatorNormalizeInput(passwordInput, password, sizeof(password)) != 0 ||
-        !validatorIsValidPassword(password)) {
-        return BIZ_ERR_INVALID_PASSWORD;
-    }
-
-    if (validatorNormalizeInput(amountInput, amountText, sizeof(amountText)) != 0) {
-        return BIZ_ERR_INVALID_AMOUNT;
-    }
-
-    moneyParseResult = validatorParseMoneyToCent(amountText, &refundAmountCent);
-    if (moneyParseResult == MONEY_PARSE_INVALID || refundAmountCent <= 0) {
-        return BIZ_ERR_INVALID_AMOUNT;
-    }
-
-    cardLoadResult = dataLoadCards();
-    if (cardLoadResult < 0) {
-        return mapDataResult((DataResult)cardLoadResult);
-    }
-
-    card = dataQueryCardByName(cardName);
-    if (card == NULL || card->nDel != 0) {
-        return BIZ_ERR_CARD_NOT_FOUND;
-    }
-    if (strcmp(card->aPwd, password) != 0) {
-        return BIZ_ERR_WRONG_PASSWORD;
-    }
-    if (card->nStatus == CARD_STATUS_CANCELED) {
-        return BIZ_ERR_CARD_CANCELED_FOR_REFUND;
-    }
-    if (!isRefundAllowedStatus(card->nStatus)) {
-        return BIZ_ERR_CARD_STATUS_INVALID_FOR_REFUND;
-    }
-    if (card->nBalanceCent < refundAmountCent) {
-        return BIZ_ERR_BALANCE_NOT_ENOUGH;
-    }
-
-    originalCard = *card;
-    refundedCard = *card;
-    now = time(NULL);
-    refundedCard.nBalanceCent -= refundAmountCent;
-
-    snprintf(money.aCardName, sizeof(money.aCardName), "%s", refundedCard.aCardName);
-    money.tTime = now;
-    money.nStatus = 1;
-    money.nMoneyCent = refundAmountCent;
-    money.nDel = 0;
-
-    dataResult = dataUpdateCard(&refundedCard);
-    if (dataResult != DATA_OK) {
-        return mapDataResult(dataResult);
-    }
-
-    dataResult = dataSaveMoney(&money);
-    if (dataResult != DATA_OK) {
-        if (dataUpdateCard(&originalCard) != DATA_OK) {
-            return BIZ_ERR_SYSTEM;
-        }
-        return mapDataResult(dataResult);
-    }
-
-    if (refundRecord != NULL) {
-        *refundRecord = money;
-    }
-    if (updatedCard != NULL) {
-        *updatedCard = refundedCard;
-    }
-
-    logOperation("退费");
     return BIZ_OK;
 }
 

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -138,10 +138,14 @@
     <ClCompile Include="src\main.c" />
     <ClCompile Include="src\business\billing_rule.c" />
     <ClCompile Include="src\business\billing_service.c" />
+    <ClCompile Include="src\business\business_result.c" />
+    <ClCompile Include="src\business\card_auth.c" />
+    <ClCompile Include="src\business\money_service.c" />
     <ClCompile Include="src\business\card_validator.c" />
     <ClCompile Include="src\business\operation_log.c" />
     <ClCompile Include="src\business\time_validator.c" />
     <ClCompile Include="src\data\billing_repository.c" />
+    <ClCompile Include="src\data\data_file_utils.c" />
     <ClCompile Include="src\data\money_repository.c" />
     <ClCompile Include="src\data\repository.c" />
     <ClCompile Include="src\platform\platform.c" />
@@ -149,6 +153,7 @@
     <ClCompile Include="src\presentation\card_view.c" />
     <ClCompile Include="src\presentation\gui\gui_main.cpp" />
     <ClCompile Include="src\presentation\gui\gui_main_window.cpp" />
+    <ClCompile Include="src\presentation\gui\gui_main_window_core.cpp" />
     <ClCompile Include="src\presentation\gui\gui_utils.cpp" />
     <ClCompile Include="src\presentation\menu.c" />
   </ItemGroup>
@@ -159,6 +164,8 @@
     <ClInclude Include="include\billing_storage.h" />
     <ClInclude Include="include\billing_storage_file.h" />
     <ClInclude Include="include\business.h" />
+    <ClInclude Include="include\data_file_utils.h" />
+    <ClInclude Include="src\business\business_internal.h" />
     <ClInclude Include="include\card_repository.h" />
     <ClInclude Include="include\card_storage.h" />
     <ClInclude Include="include\card_storage_file.h" />
@@ -175,6 +182,7 @@
     <ClInclude Include="include\platform.h" />
     <ClInclude Include="include\time_validator.h" />
     <ClInclude Include="src\presentation\gui\gui_main_window.h" />
+    <ClInclude Include="src\presentation\gui\gui_main_window_core.h" />
     <ClInclude Include="src\presentation\gui\gui_resource.h" />
     <ClInclude Include="src\presentation\gui\gui_utils.h" />
   </ItemGroup>

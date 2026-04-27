@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -175,15 +175,20 @@
   <ItemGroup>
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\billing_rule.c" />
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\billing_service.c" />
+    <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\business_result.c" />
+    <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\card_auth.c" />
+    <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\money_service.c" />
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\card_validator.c" />
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\operation_log.c" />
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\time_validator.c" />
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\data\billing_repository.c" />
+    <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\data\data_file_utils.c" />
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\data\money_repository.c" />
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\data\repository.c" />
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\platform\platform.c" />
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_main.cpp" />
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_main_window_centered_wrapper.cpp" />
+    <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_main_window_core.cpp" />
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_utils.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -196,6 +201,8 @@
     <ClInclude Include="..\C_PROGRAM_EXPERIMENT\include\billing_storage.h" />
     <ClInclude Include="..\C_PROGRAM_EXPERIMENT\include\billing_storage_file.h" />
     <ClInclude Include="..\C_PROGRAM_EXPERIMENT\include\business.h" />
+    <ClInclude Include="..\C_PROGRAM_EXPERIMENT\include\data_file_utils.h" />
+    <ClInclude Include="..\C_PROGRAM_EXPERIMENT\src\business\business_internal.h" />
     <ClInclude Include="..\C_PROGRAM_EXPERIMENT\include\card_repository.h" />
     <ClInclude Include="..\C_PROGRAM_EXPERIMENT\include\card_storage.h" />
     <ClInclude Include="..\C_PROGRAM_EXPERIMENT\include\card_storage_file.h" />
@@ -209,6 +216,7 @@
     <ClInclude Include="..\C_PROGRAM_EXPERIMENT\include\platform.h" />
     <ClInclude Include="..\C_PROGRAM_EXPERIMENT\include\time_validator.h" />
     <ClInclude Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_main_window.h" />
+    <ClInclude Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_main_window_core.h" />
     <ClInclude Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_resource.h" />
     <ClInclude Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_utils.h" />
   </ItemGroup>

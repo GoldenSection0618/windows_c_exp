@@ -3,22 +3,64 @@
   <ItemGroup>
     <Filter Include="Source Files">
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
     <Filter Include="Header Files">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;hm;inl;inc;ipp;xsd</Extensions>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
     </Filter>
     <Filter Include="Resource Files">
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav</Extensions>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\billing_rule.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\billing_service.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\business_result.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\card_auth.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\money_service.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\card_validator.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\operation_log.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\time_validator.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\data\billing_repository.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\data\data_file_utils.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\data\money_repository.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\data\repository.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\platform\platform.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_main_window.cpp">
+    <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_main_window_centered_wrapper.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_main_window_core.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_utils.cpp">
@@ -26,7 +68,70 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\C_PROGRAM_EXPERIMENT\include\billing_query_repository.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\C_PROGRAM_EXPERIMENT\include\billing_repository.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\C_PROGRAM_EXPERIMENT\include\billing_rule.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\C_PROGRAM_EXPERIMENT\include\billing_storage.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\C_PROGRAM_EXPERIMENT\include\billing_storage_file.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\C_PROGRAM_EXPERIMENT\include\business.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\C_PROGRAM_EXPERIMENT\include\data_file_utils.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\C_PROGRAM_EXPERIMENT\src\business\business_internal.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\C_PROGRAM_EXPERIMENT\include\card_repository.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\C_PROGRAM_EXPERIMENT\include\card_storage.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\C_PROGRAM_EXPERIMENT\include\card_storage_file.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\C_PROGRAM_EXPERIMENT\include\card_validator.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\C_PROGRAM_EXPERIMENT\include\common.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\C_PROGRAM_EXPERIMENT\include\model.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\C_PROGRAM_EXPERIMENT\include\money_repository.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\C_PROGRAM_EXPERIMENT\include\money_storage.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\C_PROGRAM_EXPERIMENT\include\money_storage_file.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\C_PROGRAM_EXPERIMENT\include\operation_log.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\C_PROGRAM_EXPERIMENT\include\platform.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\C_PROGRAM_EXPERIMENT\include\time_validator.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_main_window.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_main_window_core.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_resource.h">
