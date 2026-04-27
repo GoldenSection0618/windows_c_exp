@@ -124,7 +124,7 @@ static const ModeConfig kModeConfigs[] = {
     {GuiMode::AdminStop, L"计费管理系统 - 管理员后台", kAdminNav, {L"卡号", true, L"", false, L"", false, false}, L"下机", L"管理员：下机只需要卡号。", false},
     {GuiMode::AdminRecharge, L"计费管理系统 - 管理员后台", kAdminNav, {L"卡号", true, L"", false, L"充值金额(元)", true, false}, L"充值", L"管理员资金操作：只需要卡号和金额，不需要卡密码。", false},
     {GuiMode::AdminRefund, L"计费管理系统 - 管理员后台", kAdminNav, {L"卡号", true, L"", false, L"退费金额(元)", true, false}, L"退费", L"管理员资金操作：只需要卡号和金额，不需要卡密码。", false},
-    {GuiMode::AdminStatistics, L"计费管理系统 - 管理员后台", kAdminNav, {L"年份(YYYY)", true, L"", false, L"", false, false}, L"统计", L"管理员：营业额统计。", false},
+    {GuiMode::AdminStatistics, L"计费管理系统 - 管理员后台", kAdminNav, {L"年月(YYYY-MM)", true, L"", false, L"", false, false}, L"统计", L"管理员：按月统计营业额，例如 2026-04。", false},
     {GuiMode::UserBalance, L"计费管理系统 - 用户中心", kUserNav, {L"", false, L"", false, L"", false, false}, L"查询余额", L"用户：当前登录卡号 ", true},
     {GuiMode::UserStart, L"计费管理系统 - 用户中心", kUserNav, {L"", false, L"", false, L"", false, false}, L"上机", L"用户：当前登录卡号 ", true},
     {GuiMode::UserStop, L"计费管理系统 - 用户中心", kUserNav, {L"", false, L"", false, L"", false, false}, L"下机", L"用户：当前登录卡号 ", true},
