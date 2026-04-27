@@ -10,6 +10,7 @@ enum class GuiMode {
     AuthUserLogin,
     AuthRegister,
     AdminQuery,
+    AdminAdvancedQuery,
     AdminStop,
     AdminRecharge,
     AdminRefund,
@@ -31,6 +32,7 @@ struct GuiState {
 void GuiPrepareList(HWND listHandle);
 void GuiShowMessageRow(HWND listHandle, const wchar_t *message);
 void GuiShowCard(HWND listHandle, const Card &card);
+void GuiShowCards(HWND listHandle, const Card *cards, size_t count);
 void GuiShowMoney(HWND listHandle, const Card &card, const Money &money, const wchar_t *title);
 void GuiShowSettle(HWND listHandle, const SettleInfo &info);
 void GuiShowLogon(HWND listHandle, const LogonInfo &info);
