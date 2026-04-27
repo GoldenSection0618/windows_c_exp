@@ -80,6 +80,33 @@ void GuiShowCard(HWND listHandle, const Card &card)
 }
 
 
+void GuiShowCards(HWND listHandle, const Card *cards, size_t count)
+{
+    GuiPrepareList(listHandle);
+    AddColumn(listHandle, 0, 150, L"卡号");
+    AddColumn(listHandle, 1, 100, L"状态");
+    AddColumn(listHandle, 2, 100, L"余额");
+    AddColumn(listHandle, 3, 120, L"累计消费");
+    AddColumn(listHandle, 4, 100, L"使用次数");
+    AddColumn(listHandle, 5, 190, L"最后使用时间");
+
+    if (cards == nullptr) {
+        return;
+    }
+
+    for (size_t i = 0; i < count; ++i) {
+        AddRow(listHandle, static_cast<int>(i), {
+            GuiUtf8ToWide(cards[i].aCardName),
+            GuiCardStatusText(cards[i].nStatus),
+            GuiFormatMoneyFromCent(cards[i].nBalanceCent),
+            GuiFormatMoneyFromCent(cards[i].nTotalUseCent),
+            std::to_wstring(cards[i].nUseCount),
+            GuiFormatTime(cards[i].tLast)
+        });
+    }
+}
+
+
 void GuiShowSettle(HWND listHandle, const SettleInfo &info)
 {
     GuiPrepareList(listHandle);
