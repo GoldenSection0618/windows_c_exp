@@ -1,82 +1,82 @@
 #include <windows.h>
 
-static BOOL GuiInvalidateWithoutErase(HWND windowHandle, const RECT *rect, BOOL eraseBackground)
-{
-    (void)eraseBackground;
-    return RedrawWindow(windowHandle,
-                        rect,
-                        nullptr,
-                        RDW_INVALIDATE | RDW_ALLCHILDREN | RDW_UPDATENOW) ? TRUE : FALSE;
-}
-
-#define InvalidateRect GuiInvalidateWithoutErase
-#define RunMainGuiDialog RunMainGuiDialog_Uncentered
-#include "gui_main_window_scroll.cpp"
+#define MainDialogProc MainDialogProc_Base
+#define RunMainGuiDialog RunMainGuiDialog_Base
+#include "gui_main_window.cpp"
 #undef RunMainGuiDialog
-#undef InvalidateRect
+#undef MainDialogProc
 
-static HHOOK gCenterDialogHook = nullptr;
-
-static void EnableLowFlickerDialogStyles(HWND windowHandle)
+static void ResizeAndCenterDialog(HWND dialog)
 {
-    LONG_PTR style = GetWindowLongPtrW(windowHandle, GWL_STYLE);
-    SetWindowLongPtrW(windowHandle, GWL_STYLE, style | WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
-    SetWindowPos(windowHandle,
-                 nullptr,
-                 0,
-                 0,
-                 0,
-                 0,
-                 SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOSIZE | SWP_FRAMECHANGED);
-}
+    int clientWidth = DialogUnitToPixelX(dialog, 430);
+    int clientHeight = DialogUnitToPixelY(dialog, 340);
 
-static void CenterWindowInMonitorWorkArea(HWND windowHandle)
-{
-    RECT windowRect = {0};
+    LONG_PTR style = GetWindowLongPtrW(dialog, GWL_STYLE);
+    style &= ~WS_VSCROLL;
+    SetWindowLongPtrW(dialog, GWL_STYLE, style);
+    ShowScrollBar(dialog, SB_VERT, FALSE);
+
+    RECT targetRect = {0, 0, clientWidth, clientHeight};
+    LONG_PTR exStyle = GetWindowLongPtrW(dialog, GWL_EXSTYLE);
+    AdjustWindowRectEx(&targetRect, static_cast<DWORD>(style), FALSE, static_cast<DWORD>(exStyle));
+
+    int windowWidth = targetRect.right - targetRect.left;
+    int windowHeight = targetRect.bottom - targetRect.top;
+
     MONITORINFO monitorInfo = {0};
     monitorInfo.cbSize = sizeof(monitorInfo);
-
-    EnableLowFlickerDialogStyles(windowHandle);
-
-    GetWindowRect(windowHandle, &windowRect);
-    HMONITOR monitorHandle = MonitorFromWindow(windowHandle, MONITOR_DEFAULTTONEAREST);
+    HMONITOR monitorHandle = MonitorFromWindow(dialog, MONITOR_DEFAULTTONEAREST);
     if (!GetMonitorInfoW(monitorHandle, &monitorInfo)) {
+        SetWindowPos(dialog, nullptr, 0, 0, windowWidth, windowHeight,
+            SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOMOVE | SWP_FRAMECHANGED);
         return;
     }
 
-    int windowWidth = windowRect.right - windowRect.left;
-    int windowHeight = windowRect.bottom - windowRect.top;
     int workWidth = monitorInfo.rcWork.right - monitorInfo.rcWork.left;
     int workHeight = monitorInfo.rcWork.bottom - monitorInfo.rcWork.top;
-
     int centeredX = monitorInfo.rcWork.left + (workWidth - windowWidth) / 2;
     int centeredY = monitorInfo.rcWork.top + (workHeight - windowHeight) / 2;
 
-    SetWindowPos(windowHandle, nullptr, centeredX, centeredY, 0, 0,
-        SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOSIZE);
+    SetWindowPos(dialog, nullptr, centeredX, centeredY, windowWidth, windowHeight,
+        SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
 }
 
-static LRESULT CALLBACK CenterDialogHookProc(int code, WPARAM wParam, LPARAM lParam)
+static INT_PTR CALLBACK MainDialogProc(HWND dialog, UINT message, WPARAM wParam, LPARAM lParam)
 {
-    if (code == HCBT_ACTIVATE && gCenterDialogHook != nullptr) {
-        CenterWindowInMonitorWorkArea(reinterpret_cast<HWND>(wParam));
-        UnhookWindowsHookEx(gCenterDialogHook);
-        gCenterDialogHook = nullptr;
+    if (message == WM_GETMINMAXINFO) {
+        MINMAXINFO *info = reinterpret_cast<MINMAXINFO *>(lParam);
+        int clientWidth = DialogUnitToPixelX(dialog, 430);
+        int clientHeight = DialogUnitToPixelY(dialog, 340);
+        RECT targetRect = {0, 0, clientWidth, clientHeight};
+        LONG_PTR style = GetWindowLongPtrW(dialog, GWL_STYLE) & ~WS_VSCROLL;
+        LONG_PTR exStyle = GetWindowLongPtrW(dialog, GWL_EXSTYLE);
+
+        AdjustWindowRectEx(&targetRect, static_cast<DWORD>(style), FALSE, static_cast<DWORD>(exStyle));
+        info->ptMinTrackSize.x = targetRect.right - targetRect.left;
+        info->ptMinTrackSize.y = targetRect.bottom - targetRect.top;
+        return TRUE;
     }
 
-    return CallNextHookEx(gCenterDialogHook, code, wParam, lParam);
+    INT_PTR result = MainDialogProc_Base(dialog, message, wParam, lParam);
+    if (message == WM_INITDIALOG) {
+        ResizeAndCenterDialog(dialog);
+    }
+    return result;
 }
 
 INT_PTR RunMainGuiDialog(HINSTANCE instanceHandle, int showCommand)
 {
-    gCenterDialogHook = SetWindowsHookExW(WH_CBT, CenterDialogHookProc, nullptr, GetCurrentThreadId());
+    GuiState state = {};
+    INITCOMMONCONTROLSEX controls = {0};
 
-    INT_PTR result = RunMainGuiDialog_Uncentered(instanceHandle, showCommand);
+    controls.dwSize = sizeof(controls);
+    controls.dwICC = ICC_LISTVIEW_CLASSES | ICC_STANDARD_CLASSES;
+    InitCommonControlsEx(&controls);
 
-    if (gCenterDialogHook != nullptr) {
-        UnhookWindowsHookEx(gCenterDialogHook);
-        gCenterDialogHook = nullptr;
-    }
-
-    return result;
+    (void)showCommand;
+    return DialogBoxParamW(instanceHandle,
+                           MAKEINTRESOURCEW(IDD_AMS_MAIN_GUI),
+                           nullptr,
+                           MainDialogProc,
+                           reinterpret_cast<LPARAM>(&state));
 }
