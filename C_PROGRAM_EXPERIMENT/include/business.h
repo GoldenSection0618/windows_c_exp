@@ -59,6 +59,7 @@ typedef struct BillingQueryResult {
 
 typedef struct BillingStatistics {
     int year;
+    int month;
     int32_t totalAmountCent;
     int32_t monthlyAmountCent[12];
 } BillingStatistics;
@@ -87,7 +88,7 @@ BizResult bizAdminRefundByAmount(const LoginSession *session,
                                  Money *refundRecord,
                                  Card *updatedCard);
 BizResult bizAdminGetBillingStatistics(const LoginSession *session,
-                                       const char *yearInput,
+                                       const char *yearMonthInput,
                                        BillingStatistics *statistics);
 
 BizResult bizUserQueryBalance(const LoginSession *session, Card *queriedCard);
@@ -149,7 +150,7 @@ BizResult bizQueryBillingsByCardNameAndRange(const char *cardNameInput,
                                              const char *endInput,
                                              BillingQueryResult *result);
 void bizFreeBillingQueryResult(BillingQueryResult *result);
-BizResult bizGetBillingStatistics(const char *yearInput, BillingStatistics *statistics);
+BizResult bizGetBillingStatistics(const char *yearMonthInput, BillingStatistics *statistics);
 void bizStatistics(void);
 void bizShutdown(void);
 
