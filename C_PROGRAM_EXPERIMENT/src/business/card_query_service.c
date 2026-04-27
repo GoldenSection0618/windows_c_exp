@@ -2,13 +2,12 @@
 
 #include "business_internal.h"
 #include "card_storage_file.h"
-#include "common.h"
 #include "operation_log.h"
 
 #include <stdlib.h>
 #include <string.h>
 
-static int compareInt32(int32_t left, int32_t right)
+static int compareInt32Value(int32_t left, int32_t right)
 {
     if (left < right) {
         return -1;
@@ -19,7 +18,7 @@ static int compareInt32(int32_t left, int32_t right)
     return 0;
 }
 
-static int compareTime(time_t left, time_t right)
+static int compareTimeValue(time_t left, time_t right)
 {
     if (left < right) {
         return -1;
@@ -34,13 +33,16 @@ static int compareBalanceAsc(const void *left, const void *right)
 {
     const Card *a = (const Card *)left;
     const Card *b = (const Card *)right;
-    int result = compareInt32(a->nBalanceCent, b->nBalanceCent);
+    int result = compareInt32Value(a->nBalanceCent, b->nBalanceCent);
     return result != 0 ? result : strcmp(a->aCardName, b->aCardName);
 }
 
 static int compareBalanceDesc(const void *left, const void *right)
 {
-    return -compareBalanceAsc(left, right);
+    const Card *a = (const Card *)left;
+    const Card *b = (const Card *)right;
+    int result = compareInt32Value(b->nBalanceCent, a->nBalanceCent);
+    return result != 0 ? result : strcmp(a->aCardName, b->aCardName);
 }
 
 static int compareUseCountDesc(const void *left, const void *right)
@@ -62,7 +64,7 @@ static int compareTotalUseDesc(const void *left, const void *right)
 {
     const Card *a = (const Card *)left;
     const Card *b = (const Card *)right;
-    int result = compareInt32(b->nTotalUseCent, a->nTotalUseCent);
+    int result = compareInt32Value(b->nTotalUseCent, a->nTotalUseCent);
     return result != 0 ? result : strcmp(a->aCardName, b->aCardName);
 }
 
@@ -70,7 +72,7 @@ static int compareLastUseDesc(const void *left, const void *right)
 {
     const Card *a = (const Card *)left;
     const Card *b = (const Card *)right;
-    int result = compareTime(b->tLast, a->tLast);
+    int result = compareTimeValue(b->tLast, a->tLast);
     return result != 0 ? result : strcmp(a->aCardName, b->aCardName);
 }
 
@@ -126,11 +128,11 @@ static int (*getComparator(CardQuerySortType sortType))(const void *, const void
 
 static BizResult queryAllCards(Card **cards, size_t *count)
 {
-    size_t capacity = 0;
-    int loadResult = 0;
-    int totalCount = 0;
-    int index = 0;
     Card *items = NULL;
+    size_t actualCount = 0;
+    size_t requiredCount = 0;
+    int loadResult = 0;
+    DataResult queryResult = DATA_OK;
 
     if (cards == NULL || count == NULL) {
         return BIZ_ERR_SYSTEM;
@@ -144,28 +146,28 @@ static BizResult queryAllCards(Card **cards, size_t *count)
         return mapDataResult((DataResult)loadResult);
     }
 
-    totalCount = dataGetCardCount();
-    if (totalCount < 0) {
-        return mapDataResult((DataResult)totalCount);
+    queryResult = dataQueryAllCards(NULL, 0, &actualCount, &requiredCount);
+    if (queryResult != DATA_OK) {
+        return mapDataResult(queryResult);
     }
-    if (totalCount == 0) {
+    if (requiredCount == 0) {
         return BIZ_ERR_NO_MATCHED_CARD;
     }
 
-    capacity = (size_t)totalCount;
-    items = (Card *)malloc(capacity * sizeof(Card));
+    items = (Card *)malloc(requiredCount * sizeof(Card));
     if (items == NULL) {
         return BIZ_ERR_NO_MEMORY;
     }
 
-    for (index = 0; index < totalCount; index++) {
-        /* The repository keeps cards in memory but exposes no iterator in the legacy API.
-           Use an all-match query over an empty-like sentinel by reading each record from the file layer is avoided here;
-           therefore this function is filled by the data repository helper below when available. */
+    queryResult = dataQueryAllCards(items, requiredCount, &actualCount, &requiredCount);
+    if (queryResult != DATA_OK || actualCount != requiredCount) {
+        free(items);
+        return queryResult == DATA_OK ? BIZ_ERR_SYSTEM : mapDataResult(queryResult);
     }
 
-    free(items);
-    return BIZ_ERR_SYSTEM;
+    *cards = items;
+    *count = actualCount;
+    return BIZ_OK;
 }
 
 BizResult bizQueryCardsAdvanced(const CardQueryOption *option, Card **outCards, size_t *outCount)
