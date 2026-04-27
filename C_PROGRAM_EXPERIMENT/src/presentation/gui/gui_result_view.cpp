@@ -156,15 +156,12 @@ void GuiShowMoney(HWND listHandle, const Card &card, const Money &money, const w
 void GuiShowStatistics(HWND listHandle, const BillingStatistics &statistics)
 {
     GuiPrepareList(listHandle);
-    AddColumn(listHandle, 0, 160, L"项目");
-    AddColumn(listHandle, 1, 160, L"金额");
-    AddRow(listHandle, 0, {L"总营业额", GuiFormatMoneyFromCent(statistics.totalAmountCent)});
-    for (int i = 0; i < 12; ++i) {
-        AddRow(listHandle, i + 1, {
-            std::to_wstring(statistics.year) + L"年" + std::to_wstring(i + 1) + L"月",
-            GuiFormatMoneyFromCent(statistics.monthlyAmountCent[i])
-        });
-    }
+    AddColumn(listHandle, 0, 160, L"统计月份");
+    AddColumn(listHandle, 1, 160, L"月营业额");
+    AddRow(listHandle, 0, {
+        std::to_wstring(statistics.year) + L"年" + std::to_wstring(statistics.month) + L"月",
+        GuiFormatMoneyFromCent(statistics.totalAmountCent)
+    });
 }
 
 
