@@ -260,7 +260,7 @@ static void SwitchMode(HWND dialog, GuiState *state, GuiMode mode)
         SetNavButton(dialog, IDC_AMS_NAV_EXIT, L"", false);
         ConfigureInput(dialog, L"管理员账号", true, L"管理员密码", true, L"", false, true);
         SetText(dialog, IDC_AMS_SUBMIT, L"登录");
-        SetStatus(dialog, L"管理员账号 root，密码 root。");
+        SetStatus(dialog, L"");
         break;
     case GuiMode::AuthUserLogin:
         ConfigureInput(dialog, L"卡号", true, L"密码", true, L"", false, true);
