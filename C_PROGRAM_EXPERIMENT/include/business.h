@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include "model.h"
+#include "card_query.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -58,6 +59,8 @@ BizResult bizQueryCardsByKeyword(const char *keywordInput,
                                  size_t capacity,
                                  size_t *actualCount,
                                  size_t *requiredCount);
+BizResult bizQueryCardsAdvanced(const CardQueryOption *option, CardQueryPage *page);
+void bizFreeCardQueryPage(CardQueryPage *page);
 const char *bizGetMessage(BizResult result);
 BizResult bizStartBilling(const char *cardNameInput,
                           const char *passwordInput,
