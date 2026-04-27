@@ -4,6 +4,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef enum MoneyParseResult {
     MONEY_PARSE_OK = 0,
     MONEY_PARSE_INVALID = -1,
@@ -14,5 +18,9 @@ int validatorNormalizeInput(const char *input, char *buffer, size_t size);
 int validatorIsValidCardName(const char *cardName);
 int validatorIsValidPassword(const char *password);
 MoneyParseResult validatorParseMoneyToCent(const char *text, int32_t *amountCent);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
