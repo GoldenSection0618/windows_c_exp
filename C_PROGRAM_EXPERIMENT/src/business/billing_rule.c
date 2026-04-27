@@ -10,7 +10,7 @@ Rate billingRuleGetDefaultRate(void)
     rate.starttime = 0;
     rate.endtime = 0;
     rate.unit = 1;
-    rate.nChargeCent = 1;
+    rate.nChargeCent = 100;
     rate.ratetype = 0;
     rate.del = 0;
     return rate;
