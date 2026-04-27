@@ -24,6 +24,18 @@
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\business_result.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\session_service.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\card_service.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\statistics_service.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\cancel_service.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\card_auth.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -61,6 +73,15 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_main_window_core.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_result_view.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_mode_config.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_action_controller.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_utils.cpp">
@@ -132,6 +153,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_main_window_core.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_main_window_internal.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_resource.h">

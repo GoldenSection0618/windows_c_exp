@@ -176,6 +176,10 @@
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\billing_rule.c" />
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\billing_service.c" />
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\business_result.c" />
+    <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\session_service.c" />
+    <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\card_service.c" />
+    <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\statistics_service.c" />
+    <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\cancel_service.c" />
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\card_auth.c" />
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\money_service.c" />
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\card_validator.c" />
@@ -189,6 +193,9 @@
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_main.cpp" />
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_main_window_centered_wrapper.cpp" />
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_main_window_core.cpp" />
+    <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_result_view.cpp" />
+    <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_mode_config.cpp" />
+    <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_action_controller.cpp" />
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_utils.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -217,6 +224,7 @@
     <ClInclude Include="..\C_PROGRAM_EXPERIMENT\include\time_validator.h" />
     <ClInclude Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_main_window.h" />
     <ClInclude Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_main_window_core.h" />
+    <ClInclude Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_main_window_internal.h" />
     <ClInclude Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_resource.h" />
     <ClInclude Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_utils.h" />
   </ItemGroup>

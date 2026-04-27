@@ -50,7 +50,6 @@ typedef struct LoginSession {
     LoginRole role;
     int loggedIn;
     char cardName[CARD_NAME_MAX_LEN + 1];
-    char password[CARD_PWD_MAX_LEN + 1];
 } LoginSession;
 
 typedef struct BillingQueryResult {
@@ -116,6 +115,8 @@ BizResult bizQueryCardsByKeyword(const char *keywordInput,
                                  size_t *actualCount,
                                  size_t *requiredCount);
 const char *bizGetMessage(BizResult result);
+
+/* Legacy console/internal API. New GUI code should call the session/user/admin APIs above. */
 BizResult bizStartBilling(const char *cardNameInput,
                           const char *passwordInput,
                           time_t requestTime,

@@ -6,6 +6,7 @@
 #include "common.h"
 
 #include <stdio.h>
+#include <string.h>
 
 BizResult bizLoadCardByName(const char *cardNameInput, Card *outCard)
 {
@@ -33,6 +34,32 @@ BizResult bizLoadCardByName(const char *cardNameInput, Card *outCard)
     }
 
     *outCard = *card;
+    return BIZ_OK;
+}
+
+BizResult bizLoadCardByCredentialInternal(const char *cardNameInput, const char *passwordInput, Card *outCard)
+{
+    char password[INPUT_BUF_SIZE];
+    Card card;
+    BizResult result = BIZ_OK;
+
+    if (validatorNormalizeInput(passwordInput, password, sizeof(password)) != 0 ||
+        !validatorIsValidPassword(password)) {
+        return BIZ_ERR_INVALID_PASSWORD;
+    }
+
+    result = bizLoadCardByName(cardNameInput, &card);
+    if (result != BIZ_OK) {
+        return result;
+    }
+
+    if (strcmp(card.aPwd, password) != 0) {
+        return BIZ_ERR_WRONG_PASSWORD;
+    }
+
+    if (outCard != NULL) {
+        *outCard = card;
+    }
     return BIZ_OK;
 }
 

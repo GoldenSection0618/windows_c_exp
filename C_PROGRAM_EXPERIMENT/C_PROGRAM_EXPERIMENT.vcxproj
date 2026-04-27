@@ -139,6 +139,10 @@
     <ClCompile Include="src\business\billing_rule.c" />
     <ClCompile Include="src\business\billing_service.c" />
     <ClCompile Include="src\business\business_result.c" />
+    <ClCompile Include="src\business\session_service.c" />
+    <ClCompile Include="src\business\card_service.c" />
+    <ClCompile Include="src\business\statistics_service.c" />
+    <ClCompile Include="src\business\cancel_service.c" />
     <ClCompile Include="src\business\card_auth.c" />
     <ClCompile Include="src\business\money_service.c" />
     <ClCompile Include="src\business\card_validator.c" />
@@ -154,6 +158,9 @@
     <ClCompile Include="src\presentation\gui\gui_main.cpp" />
     <ClCompile Include="src\presentation\gui\gui_main_window.cpp" />
     <ClCompile Include="src\presentation\gui\gui_main_window_core.cpp" />
+    <ClCompile Include="src\presentation\gui\gui_result_view.cpp" />
+    <ClCompile Include="src\presentation\gui\gui_mode_config.cpp" />
+    <ClCompile Include="src\presentation\gui\gui_action_controller.cpp" />
     <ClCompile Include="src\presentation\gui\gui_utils.cpp" />
     <ClCompile Include="src\presentation\menu.c" />
   </ItemGroup>
@@ -183,6 +190,7 @@
     <ClInclude Include="include\time_validator.h" />
     <ClInclude Include="src\presentation\gui\gui_main_window.h" />
     <ClInclude Include="src\presentation\gui\gui_main_window_core.h" />
+    <ClInclude Include="src\presentation\gui\gui_main_window_internal.h" />
     <ClInclude Include="src\presentation\gui\gui_resource.h" />
     <ClInclude Include="src\presentation\gui\gui_utils.h" />
   </ItemGroup>

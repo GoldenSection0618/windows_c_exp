@@ -24,28 +24,16 @@ BizResult bizRecharge(const char *cardNameInput,
                       Money *rechargeRecord,
                       Card *updatedCard)
 {
-    char cardName[INPUT_BUF_SIZE];
-    char password[INPUT_BUF_SIZE];
     char amountText[INPUT_BUF_SIZE];
-    const Card *card = NULL;
+    Card card;
     Card originalCard;
     Card rechargedCard;
     Money money = {0};
-    int cardLoadResult = 0;
     int32_t amountCent = 0;
+    BizResult authResult = BIZ_OK;
     MoneyParseResult moneyParseResult = MONEY_PARSE_OK;
     DataResult dataResult = DATA_OK;
     time_t now = 0;
-
-    if (validatorNormalizeInput(cardNameInput, cardName, sizeof(cardName)) != 0 ||
-        !validatorIsValidCardName(cardName)) {
-        return BIZ_ERR_INVALID_CARD_NAME;
-    }
-
-    if (validatorNormalizeInput(passwordInput, password, sizeof(password)) != 0 ||
-        !validatorIsValidPassword(password)) {
-        return BIZ_ERR_INVALID_PASSWORD;
-    }
 
     if (validatorNormalizeInput(amountInput, amountText, sizeof(amountText)) != 0) {
         return BIZ_ERR_INVALID_AMOUNT;
@@ -59,27 +47,19 @@ BizResult bizRecharge(const char *cardNameInput,
         return BIZ_ERR_BALANCE_TOO_LARGE;
     }
 
-    cardLoadResult = dataLoadCards();
-    if (cardLoadResult < 0) {
-        return mapDataResult((DataResult)cardLoadResult);
+    authResult = bizLoadCardByCredentialInternal(cardNameInput, passwordInput, &card);
+    if (authResult != BIZ_OK) {
+        return authResult;
     }
-
-    card = dataQueryCardByName(cardName);
-    if (card == NULL || card->nDel != 0) {
-        return BIZ_ERR_CARD_NOT_FOUND;
-    }
-    if (strcmp(card->aPwd, password) != 0) {
-        return BIZ_ERR_WRONG_PASSWORD;
-    }
-    if (card->nStatus == CARD_STATUS_CANCELED) {
+    if (card.nStatus == CARD_STATUS_CANCELED) {
         return BIZ_ERR_CARD_CANCELED_FOR_RECHARGE;
     }
-    if ((int64_t)card->nBalanceCent + amountCent >= MAX_BALANCE_CENT) {
+    if ((int64_t)card.nBalanceCent + amountCent >= MAX_BALANCE_CENT) {
         return BIZ_ERR_BALANCE_TOO_LARGE;
     }
 
-    originalCard = *card;
-    rechargedCard = *card;
+    originalCard = card;
+    rechargedCard = card;
     now = time(NULL);
     rechargedCard.nBalanceCent += amountCent;
 
@@ -119,52 +99,32 @@ BizResult bizRefund(const char *cardNameInput,
                     Money *refundRecord,
                     Card *updatedCard)
 {
-    char cardName[INPUT_BUF_SIZE];
-    char password[INPUT_BUF_SIZE];
-    const Card *card = NULL;
+    Card card;
     Card originalCard;
     Card refundedCard;
     Money money = {0};
-    int cardLoadResult = 0;
     int32_t refundAmountCent = 0;
+    BizResult authResult = BIZ_OK;
     DataResult dataResult = DATA_OK;
     time_t now = 0;
 
-    if (validatorNormalizeInput(cardNameInput, cardName, sizeof(cardName)) != 0 ||
-        !validatorIsValidCardName(cardName)) {
-        return BIZ_ERR_INVALID_CARD_NAME;
+    authResult = bizLoadCardByCredentialInternal(cardNameInput, passwordInput, &card);
+    if (authResult != BIZ_OK) {
+        return authResult;
     }
-
-    if (validatorNormalizeInput(passwordInput, password, sizeof(password)) != 0 ||
-        !validatorIsValidPassword(password)) {
-        return BIZ_ERR_INVALID_PASSWORD;
-    }
-
-    cardLoadResult = dataLoadCards();
-    if (cardLoadResult < 0) {
-        return mapDataResult((DataResult)cardLoadResult);
-    }
-
-    card = dataQueryCardByName(cardName);
-    if (card == NULL || card->nDel != 0) {
-        return BIZ_ERR_CARD_NOT_FOUND;
-    }
-    if (strcmp(card->aPwd, password) != 0) {
-        return BIZ_ERR_WRONG_PASSWORD;
-    }
-    if (card->nStatus == CARD_STATUS_CANCELED) {
+    if (card.nStatus == CARD_STATUS_CANCELED) {
         return BIZ_ERR_CARD_CANCELED_FOR_REFUND;
     }
-    if (!isRefundAllowedStatus(card->nStatus)) {
+    if (!isRefundAllowedStatus(card.nStatus)) {
         return BIZ_ERR_CARD_STATUS_INVALID_FOR_REFUND;
     }
-    if (card->nBalanceCent <= 0) {
+    if (card.nBalanceCent <= 0) {
         return BIZ_ERR_BALANCE_NOT_ENOUGH;
     }
 
-    refundAmountCent = card->nBalanceCent;
-    originalCard = *card;
-    refundedCard = *card;
+    refundAmountCent = card.nBalanceCent;
+    originalCard = card;
+    refundedCard = card;
     now = time(NULL);
     refundedCard.nBalanceCent = 0;
 
@@ -205,28 +165,16 @@ BizResult bizRefundByAmount(const char *cardNameInput,
                             Money *refundRecord,
                             Card *updatedCard)
 {
-    char cardName[INPUT_BUF_SIZE];
-    char password[INPUT_BUF_SIZE];
     char amountText[INPUT_BUF_SIZE];
-    const Card *card = NULL;
+    Card card;
     Card originalCard;
     Card refundedCard;
     Money money = {0};
-    int cardLoadResult = 0;
     int32_t refundAmountCent = 0;
+    BizResult authResult = BIZ_OK;
     MoneyParseResult moneyParseResult = MONEY_PARSE_OK;
     DataResult dataResult = DATA_OK;
     time_t now = 0;
-
-    if (validatorNormalizeInput(cardNameInput, cardName, sizeof(cardName)) != 0 ||
-        !validatorIsValidCardName(cardName)) {
-        return BIZ_ERR_INVALID_CARD_NAME;
-    }
-
-    if (validatorNormalizeInput(passwordInput, password, sizeof(password)) != 0 ||
-        !validatorIsValidPassword(password)) {
-        return BIZ_ERR_INVALID_PASSWORD;
-    }
 
     if (validatorNormalizeInput(amountInput, amountText, sizeof(amountText)) != 0) {
         return BIZ_ERR_INVALID_AMOUNT;
@@ -237,30 +185,22 @@ BizResult bizRefundByAmount(const char *cardNameInput,
         return BIZ_ERR_INVALID_AMOUNT;
     }
 
-    cardLoadResult = dataLoadCards();
-    if (cardLoadResult < 0) {
-        return mapDataResult((DataResult)cardLoadResult);
+    authResult = bizLoadCardByCredentialInternal(cardNameInput, passwordInput, &card);
+    if (authResult != BIZ_OK) {
+        return authResult;
     }
-
-    card = dataQueryCardByName(cardName);
-    if (card == NULL || card->nDel != 0) {
-        return BIZ_ERR_CARD_NOT_FOUND;
-    }
-    if (strcmp(card->aPwd, password) != 0) {
-        return BIZ_ERR_WRONG_PASSWORD;
-    }
-    if (card->nStatus == CARD_STATUS_CANCELED) {
+    if (card.nStatus == CARD_STATUS_CANCELED) {
         return BIZ_ERR_CARD_CANCELED_FOR_REFUND;
     }
-    if (!isRefundAllowedStatus(card->nStatus)) {
+    if (!isRefundAllowedStatus(card.nStatus)) {
         return BIZ_ERR_CARD_STATUS_INVALID_FOR_REFUND;
     }
-    if (card->nBalanceCent < refundAmountCent) {
+    if (card.nBalanceCent < refundAmountCent) {
         return BIZ_ERR_BALANCE_NOT_ENOUGH;
     }
 
-    originalCard = *card;
-    refundedCard = *card;
+    originalCard = card;
+    refundedCard = card;
     now = time(NULL);
     refundedCard.nBalanceCent -= refundAmountCent;
 

@@ -1,519 +1,47 @@
 #include "business.h"
 #include "business_internal.h"
-#include "billing_query_repository.h"
+
 #include "billing_repository.h"
 #include "billing_rule.h"
 #include "billing_storage_file.h"
 #include "card_repository.h"
 #include "card_storage_file.h"
-#include "card_validator.h"
 #include "common.h"
-#include "money_storage_file.h"
 #include "operation_log.h"
-#include "time_validator.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <limits.h>
+#include <stdint.h>
 #include <string.h>
 #include <time.h>
-
-static BizResult prepareFuzzyQueryKeyword(const char *keywordInput,
-                                          char *keyword,
-                                          size_t keywordSize)
-{
-    int readResult = 0;
-
-    if (validatorNormalizeInput(keywordInput, keyword, keywordSize) != 0 ||
-        !validatorIsValidCardName(keyword)) {
-        return BIZ_ERR_INVALID_CARD_NAME;
-    }
-
-    readResult = dataLoadCards();
-    if (readResult < 0) {
-        return mapDataResult((DataResult)readResult);
-    }
-
-    return BIZ_OK;
-}
 
 static int isStartBillingAllowedStatus(int status)
 {
     return status == CARD_STATUS_OFFLINE;
 }
 
+
 static int isStopBillingAllowedStatus(int status)
 {
     return status == CARD_STATUS_ONLINE;
 }
 
-static int isRefundAllowedStatus(int status)
-{
-    return status == CARD_STATUS_OFFLINE;
-}
-
-static int isCancelAllowedStatus(int status)
-{
-    return status == CARD_STATUS_OFFLINE;
-}
-
-static BizResult parseStatisticsYear(const char *yearInput, int *year)
-{
-    char yearText[INPUT_BUF_SIZE];
-    char *endptr = NULL;
-    long parsedYear = 0;
-
-    if (year == NULL) {
-        return BIZ_ERR_SYSTEM;
-    }
-
-    if (validatorNormalizeInput(yearInput, yearText, sizeof(yearText)) != 0 || yearText[0] == '\0') {
-        return BIZ_ERR_INVALID_TIME_RANGE;
-    }
-
-    errno = 0;
-    parsedYear = strtol(yearText, &endptr, 10);
-    if (errno != 0 || endptr == yearText || *endptr != '\0') {
-        return BIZ_ERR_INVALID_TIME_RANGE;
-    }
-
-    if (parsedYear < 1970 || parsedYear > 9999) {
-        return BIZ_ERR_INVALID_TIME_RANGE;
-    }
-
-    *year = (int)parsedYear;
-    return BIZ_OK;
-}
-
-static void clearSession(LoginSession *session)
-{
-    if (session == NULL) {
-        return;
-    }
-
-    memset(session, 0, sizeof(*session));
-    session->role = LOGIN_ROLE_NONE;
-    session->loggedIn = 0;
-}
-
-static int isAdminSessionValid(const LoginSession *session)
-{
-    return session != NULL && session->loggedIn != 0 && session->role == LOGIN_ROLE_ADMIN;
-}
-
-static int isUserSessionValid(const LoginSession *session)
-{
-    return session != NULL && session->loggedIn != 0 && session->role == LOGIN_ROLE_USER;
-}
-
-void bizInitSession(LoginSession *session)
-{
-    clearSession(session);
-}
-
-void bizLogout(LoginSession *session)
-{
-    clearSession(session);
-}
-
-int bizIsAdminSession(const LoginSession *session)
-{
-    return isAdminSessionValid(session);
-}
-
-int bizIsUserSession(const LoginSession *session)
-{
-    return isUserSessionValid(session);
-}
-
-BizResult bizAdminLogin(const char *accountInput, const char *passwordInput, LoginSession *session)
-{
-    char account[INPUT_BUF_SIZE];
-    char password[INPUT_BUF_SIZE];
-
-    if (session == NULL) {
-        return BIZ_ERR_SYSTEM;
-    }
-
-    if (validatorNormalizeInput(accountInput, account, sizeof(account)) != 0 ||
-        validatorNormalizeInput(passwordInput, password, sizeof(password)) != 0) {
-        return BIZ_ERR_WRONG_PASSWORD;
-    }
-
-    if (strcmp(account, "root") != 0 || strcmp(password, "root") != 0) {
-        return BIZ_ERR_WRONG_PASSWORD;
-    }
-
-    clearSession(session);
-    session->role = LOGIN_ROLE_ADMIN;
-    session->loggedIn = 1;
-    return BIZ_OK;
-}
-
-BizResult bizUserRegister(const char *cardNameInput, const char *passwordInput, Card *createdCard)
-{
-    return bizAddCard(cardNameInput, passwordInput, "100", createdCard);
-}
-
-BizResult bizUserLogin(const char *cardNameInput, const char *passwordInput, LoginSession *session)
-{
-    char password[INPUT_BUF_SIZE];
-    Card card;
-    BizResult result = BIZ_OK;
-
-    if (session == NULL) {
-        return BIZ_ERR_SYSTEM;
-    }
-
-    if (validatorNormalizeInput(passwordInput, password, sizeof(password)) != 0 ||
-        !validatorIsValidPassword(password)) {
-        return BIZ_ERR_WRONG_PASSWORD;
-    }
-
-    result = bizQueryCard(cardNameInput, &card);
-    if (result != BIZ_OK) {
-        return result;
-    }
-
-    if (strcmp(card.aPwd, password) != 0) {
-        return BIZ_ERR_WRONG_PASSWORD;
-    }
-
-    clearSession(session);
-    session->role = LOGIN_ROLE_USER;
-    session->loggedIn = 1;
-    snprintf(session->cardName, sizeof(session->cardName), "%s", card.aCardName);
-    snprintf(session->password, sizeof(session->password), "%s", card.aPwd);
-    return BIZ_OK;
-}
-
-BizResult bizAdminQueryCard(const LoginSession *session, const char *cardNameInput, Card *queriedCard)
-{
-    if (!isAdminSessionValid(session)) {
-        return BIZ_ERR_SYSTEM;
-    }
-
-    return bizQueryCard(cardNameInput, queriedCard);
-}
-
-BizResult bizAdminStopBilling(const LoginSession *session,
-                              const char *cardNameInput,
-                              time_t requestTime,
-                              SettleInfo *settleInfo)
-{
-    char password[INPUT_BUF_SIZE];
-    BizResult result = BIZ_OK;
-
-    if (!isAdminSessionValid(session)) {
-        return BIZ_ERR_SYSTEM;
-    }
-
-    result = bizGetCardPasswordByName(cardNameInput, password, sizeof(password));
-    if (result != BIZ_OK) {
-        return result;
-    }
-
-    return bizStopBilling(cardNameInput, password, requestTime, settleInfo);
-}
-
-BizResult bizAdminRecharge(const LoginSession *session,
-                           const char *cardNameInput,
-                           const char *amountInput,
-                           Money *rechargeRecord,
-                           Card *updatedCard)
-{
-    char password[INPUT_BUF_SIZE];
-    BizResult result = BIZ_OK;
-
-    if (!isAdminSessionValid(session)) {
-        return BIZ_ERR_SYSTEM;
-    }
-
-    result = bizGetCardPasswordByName(cardNameInput, password, sizeof(password));
-    if (result != BIZ_OK) {
-        return result;
-    }
-
-    return bizRecharge(cardNameInput, password, amountInput, rechargeRecord, updatedCard);
-}
-
-BizResult bizAdminRefundByAmount(const LoginSession *session,
-                                 const char *cardNameInput,
-                                 const char *amountInput,
-                                 Money *refundRecord,
-                                 Card *updatedCard)
-{
-    char password[INPUT_BUF_SIZE];
-    BizResult result = BIZ_OK;
-
-    if (!isAdminSessionValid(session)) {
-        return BIZ_ERR_SYSTEM;
-    }
-
-    result = bizGetCardPasswordByName(cardNameInput, password, sizeof(password));
-    if (result != BIZ_OK) {
-        return result;
-    }
-
-    return bizRefundByAmount(cardNameInput, password, amountInput, refundRecord, updatedCard);
-}
-
-BizResult bizAdminGetBillingStatistics(const LoginSession *session,
-                                       const char *yearInput,
-                                       BillingStatistics *statistics)
-{
-    if (!isAdminSessionValid(session)) {
-        return BIZ_ERR_SYSTEM;
-    }
-
-    return bizGetBillingStatistics(yearInput, statistics);
-}
-
-BizResult bizUserQueryBalance(const LoginSession *session, Card *queriedCard)
-{
-    if (!isUserSessionValid(session)) {
-        return BIZ_ERR_SYSTEM;
-    }
-
-    return bizQueryCard(session->cardName, queriedCard);
-}
-
-BizResult bizUserStartBilling(const LoginSession *session, time_t requestTime, LogonInfo *logonInfo)
-{
-    if (!isUserSessionValid(session)) {
-        return BIZ_ERR_SYSTEM;
-    }
-
-    return bizStartBilling(session->cardName, session->password, requestTime, logonInfo);
-}
-
-BizResult bizUserStopBilling(const LoginSession *session, time_t requestTime, SettleInfo *settleInfo)
-{
-    if (!isUserSessionValid(session)) {
-        return BIZ_ERR_SYSTEM;
-    }
-
-    return bizStopBilling(session->cardName, session->password, requestTime, settleInfo);
-}
-
-BizResult bizUserRecharge(const LoginSession *session,
-                          const char *amountInput,
-                          Money *rechargeRecord,
-                          Card *updatedCard)
-{
-    if (!isUserSessionValid(session)) {
-        return BIZ_ERR_SYSTEM;
-    }
-
-    return bizRecharge(session->cardName, session->password, amountInput, rechargeRecord, updatedCard);
-}
-
-BizResult bizUserRefundByAmount(const LoginSession *session,
-                                const char *amountInput,
-                                Money *refundRecord,
-                                Card *updatedCard)
-{
-    if (!isUserSessionValid(session)) {
-        return BIZ_ERR_SYSTEM;
-    }
-
-    return bizRefundByAmount(session->cardName, session->password, amountInput, refundRecord, updatedCard);
-}
-
-BizResult bizUserCancelCardWithPassword(const LoginSession *session,
-                                        const char *cardNameInput,
-                                        const char *passwordInput,
-                                        Money *refundRecord,
-                                        Card *updatedCard)
-{
-    char cardName[INPUT_BUF_SIZE];
-
-    if (!isUserSessionValid(session)) {
-        return BIZ_ERR_SYSTEM;
-    }
-
-    if (validatorNormalizeInput(cardNameInput, cardName, sizeof(cardName)) != 0 ||
-        strcmp(cardName, session->cardName) != 0) {
-        return BIZ_ERR_WRONG_PASSWORD;
-    }
-
-    return bizCancelCard(cardNameInput, passwordInput, refundRecord, updatedCard);
-}
-
-BizResult bizAddCard(const char *cardNameInput, const char *passwordInput, const char *amountInput, Card *createdCard)
-{
-    char cardName[INPUT_BUF_SIZE];
-    char password[INPUT_BUF_SIZE];
-    char amountText[INPUT_BUF_SIZE];
-    int32_t amountCent = 0;
-    MoneyParseResult moneyParseResult = MONEY_PARSE_OK;
-    Card card;
-    time_t now = 0;
-    int readResult = 0;
-    DataResult dataResult = DATA_OK;
-
-    if (validatorNormalizeInput(cardNameInput, cardName, sizeof(cardName)) != 0 ||
-        !validatorIsValidCardName(cardName)) {
-        return BIZ_ERR_INVALID_CARD_NAME;
-    }
-
-    if (validatorNormalizeInput(passwordInput, password, sizeof(password)) != 0 ||
-        !validatorIsValidPassword(password)) {
-        return BIZ_ERR_INVALID_PASSWORD;
-    }
-
-    if (validatorNormalizeInput(amountInput, amountText, sizeof(amountText)) != 0) {
-        return BIZ_ERR_INVALID_AMOUNT;
-    }
-
-    moneyParseResult = validatorParseMoneyToCent(amountText, &amountCent);
-    if (moneyParseResult == MONEY_PARSE_INVALID) {
-        return BIZ_ERR_INVALID_AMOUNT;
-    }
-    if (moneyParseResult == MONEY_PARSE_TOO_LARGE) {
-        return BIZ_ERR_BALANCE_TOO_LARGE;
-    }
-
-    readResult = dataLoadCards();
-    if (readResult < 0 && readResult != DATA_ERR_FILE_NOT_FOUND) {
-        return mapDataResult((DataResult)readResult);
-    }
-
-    if (dataCardExists(cardName)) {
-        return BIZ_ERR_DUPLICATE_CARD;
-    }
-
-    memset(&card, 0, sizeof(card));
-    memcpy(card.aCardName, cardName, strlen(cardName) + 1);
-    memcpy(card.aPwd, password, strlen(password) + 1);
-    card.nStatus = CARD_STATUS_OFFLINE;
-    now = time(NULL);
-    card.tStart = now;
-    card.tEnd = now + (time_t)(365 * 24 * 60 * 60);
-    card.tLast = now;
-    card.nTotalUseCent = 0;
-    card.nUseCount = 0;
-    card.nBalanceCent = amountCent;
-    card.nDel = 0;
-
-    dataResult = (DataResult)dataAddCard(&card);
-    if (dataResult != DATA_OK) {
-        return mapDataResult(dataResult);
-    }
-
-    dataResult = dataSaveCard(&card);
-    if (dataResult != DATA_OK) {
-        (void)dataLoadCards();
-        return mapDataResult(dataResult);
-    }
-
-    logOperation("添加卡");
-    if (createdCard != NULL) {
-        *createdCard = card;
-    }
-    return BIZ_OK;
-}
-
-BizResult bizQueryCard(const char *cardNameInput, Card *queriedCard)
-{
-    char cardName[INPUT_BUF_SIZE];
-    const Card *card = NULL;
-    int readResult = 0;
-
-    if (validatorNormalizeInput(cardNameInput, cardName, sizeof(cardName)) != 0 ||
-        !validatorIsValidCardName(cardName)) {
-        return BIZ_ERR_INVALID_CARD_NAME;
-    }
-
-    readResult = dataLoadCards();
-    if (readResult < 0) {
-        return mapDataResult((DataResult)readResult);
-    }
-
-    card = dataQueryCardByName(cardName);
-    if (card == NULL) {
-        return BIZ_ERR_CARD_NOT_FOUND;
-    }
-
-    logOperation("查询卡");
-    if (queriedCard != NULL) {
-        *queriedCard = *card;
-    }
-    return BIZ_OK;
-}
-
-BizResult bizQueryCardsByKeyword(const char *keywordInput,
-                                 Card *buffer,
-                                 size_t capacity,
-                                 size_t *actualCount,
-                                 size_t *requiredCount)
-{
-    char keyword[INPUT_BUF_SIZE];
-    size_t copied = 0;
-    BizResult result = BIZ_OK;
-
-    if (actualCount == NULL || requiredCount == NULL) {
-        return BIZ_ERR_SYSTEM;
-    }
-
-    *actualCount = 0;
-    *requiredCount = 0;
-
-    result = prepareFuzzyQueryKeyword(keywordInput, keyword, sizeof(keyword));
-    if (result != BIZ_OK) {
-        return result;
-    }
-
-    if (dataQueryCardsByKeyword(keyword, buffer, capacity, &copied, requiredCount) != DATA_OK) {
-        return BIZ_ERR_SYSTEM;
-    }
-    if (*requiredCount == 0) {
-        return BIZ_ERR_NO_MATCHED_CARD;
-    }
-
-    if (buffer == NULL || capacity == 0) {
-        return BIZ_OK;
-    }
-
-    if (copied != *requiredCount) {
-        return BIZ_ERR_SYSTEM;
-    }
-
-    logOperation("模糊查询");
-    *actualCount = copied;
-    return BIZ_OK;
-}
 
 BizResult bizStartBilling(const char *cardNameInput,
                           const char *passwordInput,
                           time_t requestTime,
                           LogonInfo *logonInfo)
 {
-    char cardName[INPUT_BUF_SIZE];
-    char password[INPUT_BUF_SIZE];
-    int cardLoadResult = 0;
     int billingLoadResult = 0;
-    const Card *card = NULL;
+    Card card;
     Card updatedCard;
     Card originalCard;
     Billing billing;
     DataResult dataResult = DATA_OK;
     time_t now = 0;
+    BizResult authResult = BIZ_OK;
 
-    if (validatorNormalizeInput(cardNameInput, cardName, sizeof(cardName)) != 0 ||
-        !validatorIsValidCardName(cardName)) {
-        return BIZ_ERR_INVALID_CARD_NAME;
-    }
-
-    if (validatorNormalizeInput(passwordInput, password, sizeof(password)) != 0 ||
-        !validatorIsValidPassword(password)) {
-        return BIZ_ERR_INVALID_PASSWORD;
-    }
-
-    cardLoadResult = dataLoadCards();
-    if (cardLoadResult < 0) {
-        return mapDataResult((DataResult)cardLoadResult);
+    authResult = bizLoadCardByCredentialInternal(cardNameInput, passwordInput, &card);
+    if (authResult != BIZ_OK) {
+        return authResult;
     }
 
     billingLoadResult = dataLoadBillings();
@@ -521,28 +49,18 @@ BizResult bizStartBilling(const char *cardNameInput,
         return mapDataResult((DataResult)billingLoadResult);
     }
 
-    card = dataQueryCardByName(cardName);
-    if (card == NULL) {
-        return BIZ_ERR_CARD_NOT_FOUND;
-    }
-    if (card->nDel != 0) {
-        return BIZ_ERR_CARD_NOT_FOUND;
-    }
-    if (strcmp(card->aPwd, password) != 0) {
-        return BIZ_ERR_WRONG_PASSWORD;
-    }
-    if (card->nStatus == CARD_STATUS_CANCELED) {
+    if (card.nStatus == CARD_STATUS_CANCELED) {
         return BIZ_ERR_CARD_CANCELED_FOR_START;
     }
-    if (!isStartBillingAllowedStatus(card->nStatus)) {
+    if (!isStartBillingAllowedStatus(card.nStatus)) {
         return BIZ_ERR_CARD_UNAVAILABLE;
     }
-    if (card->nBalanceCent < 0) {
+    if (card.nBalanceCent < 0) {
         return BIZ_ERR_BALANCE_NOT_ENOUGH;
     }
 
-    originalCard = *card;
-    updatedCard = *card;
+    originalCard = card;
+    updatedCard = card;
     if (requestTime == (time_t)0) {
         return BIZ_ERR_SYSTEM;
     }
@@ -583,16 +101,14 @@ BizResult bizStartBilling(const char *cardNameInput,
     return BIZ_OK;
 }
 
+
 BizResult bizStopBilling(const char *cardNameInput,
                          const char *passwordInput,
                          time_t requestTime,
                          SettleInfo *settleInfo)
 {
-    char cardName[INPUT_BUF_SIZE];
-    char password[INPUT_BUF_SIZE];
-    int cardLoadResult = 0;
     int billingLoadResult = 0;
-    const Card *card = NULL;
+    Card card;
     const Billing *billing = NULL;
     Card originalCard;
     Card updatedCard;
@@ -602,20 +118,11 @@ BizResult bizStopBilling(const char *cardNameInput,
     int durationMinutes = 0;
     int32_t amountCent = 0;
     DataResult dataResult = DATA_OK;
+    BizResult authResult = BIZ_OK;
 
-    if (validatorNormalizeInput(cardNameInput, cardName, sizeof(cardName)) != 0 ||
-        !validatorIsValidCardName(cardName)) {
-        return BIZ_ERR_INVALID_CARD_NAME;
-    }
-
-    if (validatorNormalizeInput(passwordInput, password, sizeof(password)) != 0 ||
-        !validatorIsValidPassword(password)) {
-        return BIZ_ERR_INVALID_PASSWORD;
-    }
-
-    cardLoadResult = dataLoadCards();
-    if (cardLoadResult < 0) {
-        return mapDataResult((DataResult)cardLoadResult);
+    authResult = bizLoadCardByCredentialInternal(cardNameInput, passwordInput, &card);
+    if (authResult != BIZ_OK) {
+        return authResult;
     }
 
     billingLoadResult = dataLoadBillings();
@@ -626,21 +133,11 @@ BizResult bizStopBilling(const char *cardNameInput,
         return mapDataResult((DataResult)billingLoadResult);
     }
 
-    card = dataQueryCardByName(cardName);
-    if (card == NULL) {
-        return BIZ_ERR_CARD_NOT_FOUND;
-    }
-    if (card->nDel != 0) {
-        return BIZ_ERR_CARD_NOT_FOUND;
-    }
-    if (strcmp(card->aPwd, password) != 0) {
-        return BIZ_ERR_WRONG_PASSWORD;
-    }
-    if (!isStopBillingAllowedStatus(card->nStatus)) {
+    if (!isStopBillingAllowedStatus(card.nStatus)) {
         return BIZ_ERR_CARD_STATUS_INVALID_FOR_STOP;
     }
 
-    billing = dataQueryLatestUnsettledBillingByCardName(cardName);
+    billing = dataQueryLatestUnsettledBillingByCardName(card.aCardName);
     if (billing == NULL) {
         return BIZ_ERR_NO_UNSETTLED_BILLING;
     }
@@ -654,8 +151,8 @@ BizResult bizStopBilling(const char *cardNameInput,
         return BIZ_ERR_SYSTEM;
     }
 
-    originalCard = *card;
-    updatedCard = *card;
+    originalCard = card;
+    updatedCard = card;
     updatedCard.nStatus = CARD_STATUS_OFFLINE;
     updatedCard.nBalanceCent -= amountCent;
     updatedCard.nTotalUseCent += amountCent;
@@ -692,237 +189,4 @@ BizResult bizStopBilling(const char *cardNameInput,
     (void)durationMinutes;
     logOperation("下机");
     return BIZ_OK;
-}
-
-BizResult bizQueryBillingsByCardName(const char *cardNameInput, BillingQueryResult *result)
-{
-    char cardName[INPUT_BUF_SIZE];
-    DataResult dataResult = DATA_OK;
-
-    if (result == NULL) {
-        return BIZ_ERR_SYSTEM;
-    }
-
-    result->items = NULL;
-    result->count = 0;
-
-    if (validatorNormalizeInput(cardNameInput, cardName, sizeof(cardName)) != 0 ||
-        !validatorIsValidCardName(cardName)) {
-        return BIZ_ERR_INVALID_CARD_NAME;
-    }
-
-    dataResult = dataQueryBillingsByCardName(cardName, &result->items, &result->count);
-    if (dataResult == DATA_ERR_NOT_FOUND || dataResult == DATA_ERR_FILE_NOT_FOUND) {
-        return BIZ_ERR_BILLING_RECORD_NOT_FOUND;
-    }
-    if (dataResult != DATA_OK) {
-        return mapDataResult(dataResult);
-    }
-
-    logOperation("按卡号查询消费记录");
-    return BIZ_OK;
-}
-
-BizResult bizQueryBillingsByCardNameAndRange(const char *cardNameInput,
-                                             const char *startInput,
-                                             const char *endInput,
-                                             BillingQueryResult *result)
-{
-    char cardName[INPUT_BUF_SIZE];
-    time_t startTime = (time_t)0;
-    time_t endTime = (time_t)0;
-    DataResult dataResult = DATA_OK;
-
-    if (result == NULL) {
-        return BIZ_ERR_SYSTEM;
-    }
-
-    result->items = NULL;
-    result->count = 0;
-
-    if (validatorNormalizeInput(cardNameInput, cardName, sizeof(cardName)) != 0 ||
-        !validatorIsValidCardName(cardName)) {
-        return BIZ_ERR_INVALID_CARD_NAME;
-    }
-
-    if (timeValidatorParseDateTime(startInput, &startTime) != 0 ||
-        timeValidatorParseDateTime(endInput, &endTime) != 0 ||
-        startTime > endTime) {
-        return BIZ_ERR_INVALID_TIME_RANGE;
-    }
-
-    dataResult = dataQueryBillingsByCardNameAndRange(cardName, startTime, endTime, &result->items, &result->count);
-    if (dataResult == DATA_ERR_NOT_FOUND || dataResult == DATA_ERR_FILE_NOT_FOUND) {
-        return BIZ_ERR_BILLING_RECORD_NOT_FOUND;
-    }
-    if (dataResult != DATA_OK) {
-        return mapDataResult(dataResult);
-    }
-
-    logOperation("按卡号和时间段查询消费记录");
-    return BIZ_OK;
-}
-
-void bizFreeBillingQueryResult(BillingQueryResult *result)
-{
-    if (result == NULL) {
-        return;
-    }
-
-    dataFreeQueriedBillings(result->items);
-    result->items = NULL;
-    result->count = 0;
-}
-
-BizResult bizGetBillingStatistics(const char *yearInput, BillingStatistics *statistics)
-{
-    Billing *records = NULL;
-    size_t count = 0;
-    size_t index = 0;
-    int targetYear = 0;
-    DataResult dataResult = DATA_OK;
-
-    if (statistics == NULL) {
-        return BIZ_ERR_SYSTEM;
-    }
-
-    memset(statistics, 0, sizeof(*statistics));
-
-    if (parseStatisticsYear(yearInput, &targetYear) != BIZ_OK) {
-        return BIZ_ERR_INVALID_TIME_RANGE;
-    }
-
-    dataResult = dataQueryAllBillings(&records, &count);
-    if (dataResult == DATA_ERR_NOT_FOUND || dataResult == DATA_ERR_FILE_NOT_FOUND) {
-        statistics->year = targetYear;
-        return BIZ_OK;
-    }
-    if (dataResult != DATA_OK) {
-        return mapDataResult(dataResult);
-    }
-
-    statistics->year = targetYear;
-    for (index = 0; index < count; index++) {
-        struct tm *localValue = NULL;
-        int year = 0;
-        int month = 0;
-
-        if (records[index].nStatus != 1 || records[index].nDel != 0 || records[index].nAmountCent <= 0) {
-            continue;
-        }
-
-        statistics->totalAmountCent += records[index].nAmountCent;
-
-        localValue = localtime(&records[index].tEnd);
-        if (localValue == NULL) {
-            continue;
-        }
-
-        year = localValue->tm_year + 1900;
-        month = localValue->tm_mon;
-        if (year == targetYear && month >= 0 && month < 12) {
-            statistics->monthlyAmountCent[month] += records[index].nAmountCent;
-        }
-    }
-
-    dataFreeQueriedBillings(records);
-    logOperation("营业额统计");
-    return BIZ_OK;
-}
-
-void bizStatistics(void)
-{
-    printf("[业务逻辑层] 查询统计功能入口。\n");
-    logOperation("查询统计");
-}
-
-BizResult bizCancelCard(const char *cardNameInput,
-                        const char *passwordInput,
-                        Money *refundRecord,
-                        Card *updatedCard)
-{
-    char cardName[INPUT_BUF_SIZE];
-    char password[INPUT_BUF_SIZE];
-    const Card *card = NULL;
-    Card originalCard;
-    Card canceledCard;
-    Money money = {0};
-    int cardLoadResult = 0;
-    int32_t refundAmountCent = 0;
-    DataResult dataResult = DATA_OK;
-    time_t now = 0;
-
-    if (validatorNormalizeInput(cardNameInput, cardName, sizeof(cardName)) != 0 ||
-        !validatorIsValidCardName(cardName)) {
-        return BIZ_ERR_INVALID_CARD_NAME;
-    }
-
-    if (validatorNormalizeInput(passwordInput, password, sizeof(password)) != 0 ||
-        !validatorIsValidPassword(password)) {
-        return BIZ_ERR_INVALID_PASSWORD;
-    }
-
-    cardLoadResult = dataLoadCards();
-    if (cardLoadResult < 0) {
-        return mapDataResult((DataResult)cardLoadResult);
-    }
-
-    card = dataQueryCardByName(cardName);
-    if (card == NULL || card->nDel != 0) {
-        return BIZ_ERR_CARD_NOT_FOUND;
-    }
-    if (strcmp(card->aPwd, password) != 0) {
-        return BIZ_ERR_WRONG_PASSWORD;
-    }
-    if (card->nStatus == CARD_STATUS_CANCELED) {
-        return BIZ_ERR_CARD_CANCELED_FOR_CANCEL;
-    }
-    if (!isCancelAllowedStatus(card->nStatus)) {
-        return BIZ_ERR_CARD_STATUS_INVALID_FOR_CANCEL;
-    }
-
-    refundAmountCent = card->nBalanceCent;
-    originalCard = *card;
-    canceledCard = *card;
-    now = time(NULL);
-    canceledCard.nStatus = CARD_STATUS_CANCELED;
-    canceledCard.nBalanceCent = 0;
-
-    dataResult = dataUpdateCard(&canceledCard);
-    if (dataResult != DATA_OK) {
-        return mapDataResult(dataResult);
-    }
-
-    if (refundAmountCent > 0) {
-        snprintf(money.aCardName, sizeof(money.aCardName), "%s", canceledCard.aCardName);
-        money.tTime = now;
-        money.nStatus = 1;
-        money.nMoneyCent = refundAmountCent;
-        money.nDel = 0;
-
-        dataResult = dataSaveMoney(&money);
-        if (dataResult != DATA_OK) {
-            if (dataUpdateCard(&originalCard) != DATA_OK) {
-                return BIZ_ERR_SYSTEM;
-            }
-            return mapDataResult(dataResult);
-        }
-    }
-
-    if (refundRecord != NULL) {
-        *refundRecord = money;
-    }
-    if (updatedCard != NULL) {
-        *updatedCard = canceledCard;
-    }
-
-    logOperation("注销卡");
-    return BIZ_OK;
-}
-
-void bizShutdown(void)
-{
-    dataCleanup();
-    dataCleanupBillings();
-    dataCleanupMoneys();
 }

@@ -6,6 +6,7 @@
 
 BizResult mapDataResult(DataResult result);
 BizResult bizLoadCardByName(const char *cardNameInput, Card *outCard);
+BizResult bizLoadCardByCredentialInternal(const char *cardNameInput, const char *passwordInput, Card *outCard);
 BizResult bizGetCardPasswordByName(const char *cardNameInput, char *passwordBuffer, size_t passwordBufferSize);
 
 #endif
