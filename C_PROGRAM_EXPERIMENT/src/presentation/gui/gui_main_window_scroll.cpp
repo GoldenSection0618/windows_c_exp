@@ -1,0 +1,909 @@
+#include "gui_main_window.h"
+
+#include "business.h"
+#include "gui_resource.h"
+#include "gui_utils.h"
+
+#include <commctrl.h>
+#include <time.h>
+
+#include <array>
+#include <string>
+#include <vector>
+
+#pragma comment(lib, "Comctl32.lib")
+
+enum class GuiFeature {
+    AddCard,
+    QueryCard,
+    Logon,
+    Settle,
+    Recharge,
+    Refund,
+    CancelCard,
+    Billing,
+    Statistics
+};
+
+struct GuiState {
+    GuiFeature feature;
+    HWND listHandle;
+    HWND navBackgroundHandle;
+    bool layoutInitialized;
+    int scrollY;
+    int contentHeight;
+};
+
+static void UpdateMainLayout(HWND dialog, GuiState *state, int clientWidth, int clientHeight);
+
+static HWND FindNavBackgroundControl(HWND dialog)
+{
+    HWND child = GetWindow(dialog, GW_CHILD);
+    while (child != nullptr) {
+        wchar_t className[16] = {0};
+        LONG_PTR style = 0;
+        GetClassNameW(child, className, static_cast<int>(sizeof(className) / sizeof(className[0])));
+        style = GetWindowLongPtrW(child, GWL_STYLE);
+        if (lstrcmpiW(className, L"Static") == 0 && (style & SS_TYPEMASK) == SS_GRAYFRAME) {
+            return child;
+        }
+        child = GetWindow(child, GW_HWNDNEXT);
+    }
+    return nullptr;
+}
+
+static int MaxInt(int value, int minValue)
+{
+    return value < minValue ? minValue : value;
+}
+
+static int ClampInt(int value, int minValue, int maxValue)
+{
+    if (value < minValue) {
+        return minValue;
+    }
+    if (value > maxValue) {
+        return maxValue;
+    }
+    return value;
+}
+
+static int DialogUnitToPixelX(HWND dialog, int value)
+{
+    RECT rect = {0, 0, value, 0};
+    MapDialogRect(dialog, &rect);
+    return rect.right;
+}
+
+static int DialogUnitToPixelY(HWND dialog, int value)
+{
+    RECT rect = {0, 0, 0, value};
+    MapDialogRect(dialog, &rect);
+    return rect.bottom;
+}
+
+static void MoveControlDluOffset(HWND dialog, int controlId, int x, int y, int width, int height, int yOffset)
+{
+    HWND control = GetDlgItem(dialog, controlId);
+    if (control == nullptr) {
+        return;
+    }
+
+    MoveWindow(control,
+        DialogUnitToPixelX(dialog, x),
+        DialogUnitToPixelY(dialog, y) + yOffset,
+        DialogUnitToPixelX(dialog, width),
+        DialogUnitToPixelY(dialog, height),
+        TRUE);
+}
+
+static int GetMaxScrollY(const GuiState *state, int clientHeight)
+{
+    if (state == nullptr || state->contentHeight <= clientHeight) {
+        return 0;
+    }
+    return state->contentHeight - clientHeight;
+}
+
+static void UpdateVerticalScrollBar(HWND dialog, GuiState *state, int clientHeight)
+{
+    if (state == nullptr) {
+        return;
+    }
+
+    int maxScrollY = GetMaxScrollY(state, clientHeight);
+    state->scrollY = ClampInt(state->scrollY, 0, maxScrollY);
+
+    SCROLLINFO scrollInfo = {0};
+    scrollInfo.cbSize = sizeof(scrollInfo);
+    scrollInfo.fMask = SIF_RANGE | SIF_PAGE | SIF_POS;
+    scrollInfo.nMin = 0;
+    scrollInfo.nMax = state->contentHeight > 0 ? state->contentHeight - 1 : 0;
+    scrollInfo.nPage = clientHeight > 0 ? static_cast<UINT>(clientHeight) : 1;
+    scrollInfo.nPos = state->scrollY;
+
+    SetScrollInfo(dialog, SB_VERT, &scrollInfo, TRUE);
+    ShowScrollBar(dialog, SB_VERT, maxScrollY > 0);
+}
+
+static void SetMainScrollY(HWND dialog, GuiState *state, int newScrollY)
+{
+    if (state == nullptr) {
+        return;
+    }
+
+    RECT clientRect = {0};
+    GetClientRect(dialog, &clientRect);
+
+    int clientWidth = clientRect.right - clientRect.left;
+    int clientHeight = clientRect.bottom - clientRect.top;
+    int maxScrollY = GetMaxScrollY(state, clientHeight);
+    int clampedScrollY = ClampInt(newScrollY, 0, maxScrollY);
+
+    if (clampedScrollY == state->scrollY) {
+        return;
+    }
+
+    state->scrollY = clampedScrollY;
+    UpdateMainLayout(dialog, state, clientWidth, clientHeight);
+    InvalidateRect(dialog, nullptr, TRUE);
+}
+
+static void InitializeLayoutMetrics(HWND dialog, GuiState *state)
+{
+    if (state == nullptr || state->layoutInitialized) {
+        return;
+    }
+
+    state->navBackgroundHandle = FindNavBackgroundControl(dialog);
+    if (state->navBackgroundHandle == nullptr || state->listHandle == nullptr) {
+        return;
+    }
+
+    state->layoutInitialized = true;
+}
+
+static void UpdateMainLayout(HWND dialog, GuiState *state, int clientWidth, int clientHeight)
+{
+    if (state == nullptr) {
+        return;
+    }
+
+    if (!state->layoutInitialized) {
+        InitializeLayoutMetrics(dialog, state);
+    }
+
+    if (!state->layoutInitialized) {
+        return;
+    }
+
+    HWND label1Handle = GetDlgItem(dialog, IDC_AMS_LABEL_1);
+    HWND cardNameHandle = GetDlgItem(dialog, IDC_AMS_CARD_NAME);
+    HWND label2Handle = GetDlgItem(dialog, IDC_AMS_LABEL_2);
+    HWND cardPasswordHandle = GetDlgItem(dialog, IDC_AMS_CARD_PASSWORD);
+    HWND label3Handle = GetDlgItem(dialog, IDC_AMS_LABEL_3);
+    HWND cardMoneyHandle = GetDlgItem(dialog, IDC_AMS_CARD_MONEY);
+    HWND submitHandle = GetDlgItem(dialog, IDC_AMS_SUBMIT);
+    HWND statusHandle = GetDlgItem(dialog, IDC_AMS_STATUS_TEXT);
+
+    if (label1Handle == nullptr || cardNameHandle == nullptr ||
+        label2Handle == nullptr || cardPasswordHandle == nullptr ||
+        label3Handle == nullptr || cardMoneyHandle == nullptr ||
+        submitHandle == nullptr || statusHandle == nullptr ||
+        state->listHandle == nullptr || state->navBackgroundHandle == nullptr) {
+        return;
+    }
+
+    const int navX = DialogUnitToPixelX(dialog, 6);
+    const int navY = DialogUnitToPixelY(dialog, 6);
+    const int navWidth = DialogUnitToPixelX(dialog, 120);
+    const int navBottomMargin = DialogUnitToPixelY(dialog, 6);
+
+    const int navButtonX = 16;
+    const int navButtonWidth = 100;
+    const int navButtonHeight = 24;
+
+    const int contentGap = DialogUnitToPixelX(dialog, 14);
+    const int rightMargin = DialogUnitToPixelX(dialog, 30);
+    const int rowGap = DialogUnitToPixelX(dialog, 10);
+    const int contentX = navX + navWidth + contentGap;
+
+    const int labelY = DialogUnitToPixelY(dialog, 20);
+    const int labelHeight = DialogUnitToPixelY(dialog, 16);
+    const int editY = DialogUnitToPixelY(dialog, 38);
+    const int editHeight = DialogUnitToPixelY(dialog, 24);
+
+    const int submitY = DialogUnitToPixelY(dialog, 72);
+    const int submitWidth = DialogUnitToPixelX(dialog, 80);
+    const int submitHeight = DialogUnitToPixelY(dialog, 26);
+
+    const int statusY = DialogUnitToPixelY(dialog, 78);
+    const int statusHeight = DialogUnitToPixelY(dialog, 20);
+
+    const int listY = DialogUnitToPixelY(dialog, 110);
+    const int listBottomMargin = DialogUnitToPixelY(dialog, 10);
+    const int minListHeight = DialogUnitToPixelY(dialog, 180);
+
+    int contentWidth = MaxInt(clientWidth - contentX - rightMargin, DialogUnitToPixelX(dialog, 260));
+    int columnWidth = MaxInt((contentWidth - rowGap * 2) / 3, DialogUnitToPixelX(dialog, 70));
+
+    int columnX1 = contentX;
+    int columnX2 = columnX1 + columnWidth + rowGap;
+    int columnX3 = columnX2 + columnWidth + rowGap;
+
+    int submitX = contentX;
+    int statusX = submitX + submitWidth + rowGap;
+    int statusWidth = MaxInt(contentX + contentWidth - statusX, DialogUnitToPixelX(dialog, 120));
+
+    int dynamicListHeight = clientHeight - listY - listBottomMargin;
+    int listHeight = MaxInt(dynamicListHeight, minListHeight);
+
+    int navButtonsBottom = DialogUnitToPixelY(dialog, 306 + 24) + navBottomMargin;
+    int listBottom = listY + listHeight + listBottomMargin;
+    state->contentHeight = MaxInt(MaxInt(navButtonsBottom, listBottom), DialogUnitToPixelY(dialog, 420));
+
+    UpdateVerticalScrollBar(dialog, state, clientHeight);
+
+    int yOffset = -state->scrollY;
+    int navHeight = MaxInt(state->contentHeight - navY - navBottomMargin, DialogUnitToPixelY(dialog, 80));
+    MoveWindow(state->navBackgroundHandle, navX, navY + yOffset, navWidth, navHeight, TRUE);
+
+    MoveControlDluOffset(dialog, IDC_AMS_NAV_ADD_CARD, navButtonX, 18, navButtonWidth, navButtonHeight, yOffset);
+    MoveControlDluOffset(dialog, IDC_AMS_NAV_QUERY_CARD, navButtonX, 50, navButtonWidth, navButtonHeight, yOffset);
+    MoveControlDluOffset(dialog, IDC_AMS_NAV_LOGON, navButtonX, 82, navButtonWidth, navButtonHeight, yOffset);
+    MoveControlDluOffset(dialog, IDC_AMS_NAV_SETTLE, navButtonX, 114, navButtonWidth, navButtonHeight, yOffset);
+    MoveControlDluOffset(dialog, IDC_AMS_NAV_RECHARGE, navButtonX, 146, navButtonWidth, navButtonHeight, yOffset);
+    MoveControlDluOffset(dialog, IDC_AMS_NAV_REFUND, navButtonX, 178, navButtonWidth, navButtonHeight, yOffset);
+    MoveControlDluOffset(dialog, IDC_AMS_NAV_CANCEL_CARD, navButtonX, 210, navButtonWidth, navButtonHeight, yOffset);
+    MoveControlDluOffset(dialog, IDC_AMS_NAV_BILLING, navButtonX, 242, navButtonWidth, navButtonHeight, yOffset);
+    MoveControlDluOffset(dialog, IDC_AMS_NAV_STAT, navButtonX, 274, navButtonWidth, navButtonHeight, yOffset);
+    MoveControlDluOffset(dialog, IDC_AMS_NAV_EXIT, navButtonX, 306, navButtonWidth, navButtonHeight, yOffset);
+
+    MoveWindow(label1Handle, columnX1, labelY + yOffset, columnWidth, labelHeight, TRUE);
+    MoveWindow(cardNameHandle, columnX1, editY + yOffset, columnWidth, editHeight, TRUE);
+    MoveWindow(label2Handle, columnX2, labelY + yOffset, columnWidth, labelHeight, TRUE);
+    MoveWindow(cardPasswordHandle, columnX2, editY + yOffset, columnWidth, editHeight, TRUE);
+    MoveWindow(label3Handle, columnX3, labelY + yOffset, columnWidth, labelHeight, TRUE);
+    MoveWindow(cardMoneyHandle, columnX3, editY + yOffset, columnWidth, editHeight, TRUE);
+
+    MoveWindow(submitHandle, submitX, submitY + yOffset, submitWidth, submitHeight, TRUE);
+    MoveWindow(statusHandle, statusX, statusY + yOffset, statusWidth, statusHeight, TRUE);
+    MoveWindow(state->listHandle, contentX, listY + yOffset, contentWidth, listHeight, TRUE);
+}
+
+static std::wstring ReadControlText(HWND dialog, int controlId)
+{
+    wchar_t buffer[256] = {0};
+    GetDlgItemTextW(dialog, controlId, buffer, static_cast<int>(sizeof(buffer) / sizeof(buffer[0])));
+    return std::wstring(buffer);
+}
+
+static void SetStatusText(HWND dialog, const std::wstring &text)
+{
+    SetDlgItemTextW(dialog, IDC_AMS_STATUS_TEXT, text.c_str());
+}
+
+static void SetLabels(HWND dialog, const wchar_t *label1, const wchar_t *label2, const wchar_t *label3)
+{
+    SetDlgItemTextW(dialog, IDC_AMS_LABEL_1, label1 == nullptr ? L"" : label1);
+    SetDlgItemTextW(dialog, IDC_AMS_LABEL_2, label2 == nullptr ? L"" : label2);
+    SetDlgItemTextW(dialog, IDC_AMS_LABEL_3, label3 == nullptr ? L"" : label3);
+}
+
+static void SetEditVisible(HWND dialog, int controlId, bool visible)
+{
+    ShowWindow(GetDlgItem(dialog, controlId), visible ? SW_SHOW : SW_HIDE);
+}
+
+static void SetLabelVisible(HWND dialog, int controlId, bool visible)
+{
+    ShowWindow(GetDlgItem(dialog, controlId), visible ? SW_SHOW : SW_HIDE);
+}
+
+static void ConfigurePasswordMask(HWND dialog, bool enabled)
+{
+    HWND passwordEdit = GetDlgItem(dialog, IDC_AMS_CARD_PASSWORD);
+    SendMessageW(passwordEdit, EM_SETPASSWORDCHAR, enabled ? L'*' : 0, 0);
+    InvalidateRect(passwordEdit, nullptr, TRUE);
+}
+
+static void ResetInput(HWND dialog)
+{
+    SetDlgItemTextW(dialog, IDC_AMS_CARD_NAME, L"");
+    SetDlgItemTextW(dialog, IDC_AMS_CARD_PASSWORD, L"");
+    SetDlgItemTextW(dialog, IDC_AMS_CARD_MONEY, L"");
+}
+
+static void ClearListColumns(HWND listHandle)
+{
+    int column = Header_GetItemCount(ListView_GetHeader(listHandle));
+    while (column-- > 0) {
+        ListView_DeleteColumn(listHandle, column);
+    }
+}
+
+static void PrepareList(HWND listHandle)
+{
+    ListView_DeleteAllItems(listHandle);
+    ClearListColumns(listHandle);
+}
+
+static void AddListColumn(HWND listHandle, int index, int width, const wchar_t *title)
+{
+    LVCOLUMNW column = {0};
+    column.mask = LVCF_FMT | LVCF_WIDTH | LVCF_TEXT;
+    column.fmt = LVCFMT_LEFT;
+    column.cx = width;
+    column.pszText = const_cast<LPWSTR>(title);
+    ListView_InsertColumn(listHandle, index, &column);
+}
+
+static void AddListRow(HWND listHandle, int row, const std::vector<std::wstring> &values)
+{
+    LVITEMW item = {0};
+    item.mask = LVIF_TEXT;
+    item.iItem = row;
+    item.pszText = const_cast<LPWSTR>(values[0].c_str());
+    ListView_InsertItem(listHandle, &item);
+
+    for (size_t i = 1; i < values.size(); ++i) {
+        ListView_SetItemText(listHandle, row, static_cast<int>(i), const_cast<LPWSTR>(values[i].c_str()));
+    }
+}
+
+static void ShowCardQueryResult(HWND listHandle, const std::vector<Card> &cards)
+{
+    int row = 0;
+    PrepareList(listHandle);
+    AddListColumn(listHandle, 0, 160, L"卡号");
+    AddListColumn(listHandle, 1, 100, L"状态");
+    AddListColumn(listHandle, 2, 100, L"余额");
+    AddListColumn(listHandle, 3, 120, L"累计消费");
+    AddListColumn(listHandle, 4, 100, L"使用次数");
+    AddListColumn(listHandle, 5, 210, L"最后使用时间");
+
+    for (const Card &card : cards) {
+        AddListRow(listHandle, row++, {
+            GuiUtf8ToWide(card.aCardName),
+            GuiCardStatusText(card.nStatus),
+            GuiFormatMoneyFromCent(card.nBalanceCent),
+            GuiFormatMoneyFromCent(card.nTotalUseCent),
+            std::to_wstring(card.nUseCount),
+            GuiFormatTime(card.tLast)
+        });
+    }
+}
+
+static void ShowSingleResult(HWND listHandle, const std::vector<std::wstring> &columns, const std::vector<std::wstring> &values)
+{
+    int i = 0;
+    PrepareList(listHandle);
+    for (i = 0; i < static_cast<int>(columns.size()); ++i) {
+        AddListColumn(listHandle, i, 180, columns[i].c_str());
+    }
+    AddListRow(listHandle, 0, values);
+}
+
+static void ShowBillingResults(HWND listHandle, const Billing *items, size_t count)
+{
+    int row = 0;
+    size_t i = 0;
+
+    PrepareList(listHandle);
+    AddListColumn(listHandle, 0, 160, L"卡号");
+    AddListColumn(listHandle, 1, 190, L"上机时间");
+    AddListColumn(listHandle, 2, 190, L"下机时间");
+    AddListColumn(listHandle, 3, 100, L"消费金额");
+    AddListColumn(listHandle, 4, 90, L"状态");
+
+    for (i = 0; i < count; ++i) {
+        AddListRow(listHandle, row++, {
+            GuiUtf8ToWide(items[i].aCardName),
+            GuiFormatTime(items[i].tStart),
+            GuiFormatTime(items[i].tEnd),
+            GuiFormatMoneyFromCent(items[i].nAmountCent),
+            GuiBillingStatusText(items[i].nStatus)
+        });
+    }
+}
+
+static void SwitchFeature(HWND dialog, GuiState *state, GuiFeature feature)
+{
+    state->feature = feature;
+    ResetInput(dialog);
+
+    switch (feature) {
+    case GuiFeature::AddCard:
+        SetLabels(dialog, L"卡号", L"密码", L"初始金额(元)");
+        SetEditVisible(dialog, IDC_AMS_CARD_NAME, true);
+        SetEditVisible(dialog, IDC_AMS_CARD_PASSWORD, true);
+        SetEditVisible(dialog, IDC_AMS_CARD_MONEY, true);
+        SetLabelVisible(dialog, IDC_AMS_LABEL_1, true);
+        SetLabelVisible(dialog, IDC_AMS_LABEL_2, true);
+        SetLabelVisible(dialog, IDC_AMS_LABEL_3, true);
+        ConfigurePasswordMask(dialog, true);
+        SetStatusText(dialog, L"添加卡：输入卡号、密码、初始金额。\n");
+        break;
+    case GuiFeature::QueryCard:
+        SetLabels(dialog, L"卡号关键字", L"", L"");
+        SetEditVisible(dialog, IDC_AMS_CARD_NAME, true);
+        SetEditVisible(dialog, IDC_AMS_CARD_PASSWORD, false);
+        SetEditVisible(dialog, IDC_AMS_CARD_MONEY, false);
+        SetLabelVisible(dialog, IDC_AMS_LABEL_1, true);
+        SetLabelVisible(dialog, IDC_AMS_LABEL_2, false);
+        SetLabelVisible(dialog, IDC_AMS_LABEL_3, false);
+        ConfigurePasswordMask(dialog, false);
+        SetStatusText(dialog, L"查询卡：支持关键字查询。\n");
+        break;
+    case GuiFeature::Logon:
+        SetLabels(dialog, L"卡号", L"密码", L"");
+        SetEditVisible(dialog, IDC_AMS_CARD_NAME, true);
+        SetEditVisible(dialog, IDC_AMS_CARD_PASSWORD, true);
+        SetEditVisible(dialog, IDC_AMS_CARD_MONEY, false);
+        SetLabelVisible(dialog, IDC_AMS_LABEL_1, true);
+        SetLabelVisible(dialog, IDC_AMS_LABEL_2, true);
+        SetLabelVisible(dialog, IDC_AMS_LABEL_3, false);
+        ConfigurePasswordMask(dialog, true);
+        SetStatusText(dialog, L"上机：输入卡号与密码。\n");
+        break;
+    case GuiFeature::Settle:
+        SetLabels(dialog, L"卡号", L"密码", L"");
+        SetEditVisible(dialog, IDC_AMS_CARD_NAME, true);
+        SetEditVisible(dialog, IDC_AMS_CARD_PASSWORD, true);
+        SetEditVisible(dialog, IDC_AMS_CARD_MONEY, false);
+        SetLabelVisible(dialog, IDC_AMS_LABEL_1, true);
+        SetLabelVisible(dialog, IDC_AMS_LABEL_2, true);
+        SetLabelVisible(dialog, IDC_AMS_LABEL_3, false);
+        ConfigurePasswordMask(dialog, true);
+        SetStatusText(dialog, L"下机：输入卡号与密码。\n");
+        break;
+    case GuiFeature::Recharge:
+        SetLabels(dialog, L"卡号", L"密码", L"充值金额(元)");
+        SetEditVisible(dialog, IDC_AMS_CARD_NAME, true);
+        SetEditVisible(dialog, IDC_AMS_CARD_PASSWORD, true);
+        SetEditVisible(dialog, IDC_AMS_CARD_MONEY, true);
+        SetLabelVisible(dialog, IDC_AMS_LABEL_1, true);
+        SetLabelVisible(dialog, IDC_AMS_LABEL_2, true);
+        SetLabelVisible(dialog, IDC_AMS_LABEL_3, true);
+        ConfigurePasswordMask(dialog, true);
+        SetStatusText(dialog, L"充值：输入卡号、密码、金额。\n");
+        break;
+    case GuiFeature::Refund:
+        SetLabels(dialog, L"卡号", L"密码", L"退费金额(元)");
+        SetEditVisible(dialog, IDC_AMS_CARD_NAME, true);
+        SetEditVisible(dialog, IDC_AMS_CARD_PASSWORD, true);
+        SetEditVisible(dialog, IDC_AMS_CARD_MONEY, true);
+        SetLabelVisible(dialog, IDC_AMS_LABEL_1, true);
+        SetLabelVisible(dialog, IDC_AMS_LABEL_2, true);
+        SetLabelVisible(dialog, IDC_AMS_LABEL_3, true);
+        ConfigurePasswordMask(dialog, true);
+        SetStatusText(dialog, L"退费：输入卡号、密码、金额。\n");
+        break;
+    case GuiFeature::CancelCard:
+        SetLabels(dialog, L"卡号", L"密码", L"");
+        SetEditVisible(dialog, IDC_AMS_CARD_NAME, true);
+        SetEditVisible(dialog, IDC_AMS_CARD_PASSWORD, true);
+        SetEditVisible(dialog, IDC_AMS_CARD_MONEY, false);
+        SetLabelVisible(dialog, IDC_AMS_LABEL_1, true);
+        SetLabelVisible(dialog, IDC_AMS_LABEL_2, true);
+        SetLabelVisible(dialog, IDC_AMS_LABEL_3, false);
+        ConfigurePasswordMask(dialog, true);
+        SetStatusText(dialog, L"注销卡：输入卡号与密码。\n");
+        break;
+    case GuiFeature::Billing:
+        SetLabels(dialog, L"卡号", L"", L"");
+        SetEditVisible(dialog, IDC_AMS_CARD_NAME, true);
+        SetEditVisible(dialog, IDC_AMS_CARD_PASSWORD, false);
+        SetEditVisible(dialog, IDC_AMS_CARD_MONEY, false);
+        SetLabelVisible(dialog, IDC_AMS_LABEL_1, true);
+        SetLabelVisible(dialog, IDC_AMS_LABEL_2, false);
+        SetLabelVisible(dialog, IDC_AMS_LABEL_3, false);
+        ConfigurePasswordMask(dialog, false);
+        SetStatusText(dialog, L"消费记录：输入卡号查询。\n");
+        break;
+    case GuiFeature::Statistics:
+        SetLabels(dialog, L"年份(YYYY)", L"", L"");
+        SetEditVisible(dialog, IDC_AMS_CARD_NAME, true);
+        SetEditVisible(dialog, IDC_AMS_CARD_PASSWORD, false);
+        SetEditVisible(dialog, IDC_AMS_CARD_MONEY, false);
+        SetLabelVisible(dialog, IDC_AMS_LABEL_1, true);
+        SetLabelVisible(dialog, IDC_AMS_LABEL_2, false);
+        SetLabelVisible(dialog, IDC_AMS_LABEL_3, false);
+        ConfigurePasswordMask(dialog, false);
+        SetStatusText(dialog, L"营业额统计：输入年份。\n");
+        break;
+    }
+
+    PrepareList(state->listHandle);
+}
+
+static void ShowError(HWND dialog, BizResult result)
+{
+    SetStatusText(dialog, GuiUtf8ToWide(bizGetMessage(result)));
+}
+
+static void ExecuteAddCard(HWND dialog, GuiState *state)
+{
+    Card card = {};
+    std::string cardName = GuiWideToUtf8(ReadControlText(dialog, IDC_AMS_CARD_NAME));
+    std::string password = GuiWideToUtf8(ReadControlText(dialog, IDC_AMS_CARD_PASSWORD));
+    std::string amount = GuiWideToUtf8(ReadControlText(dialog, IDC_AMS_CARD_MONEY));
+    BizResult result = bizAddCard(cardName.c_str(), password.c_str(), amount.c_str(), &card);
+
+    if (result != BIZ_OK) {
+        ShowError(dialog, result);
+        return;
+    }
+
+    ShowSingleResult(state->listHandle,
+        {L"卡号", L"状态", L"余额"},
+        {GuiUtf8ToWide(card.aCardName), GuiCardStatusText(card.nStatus), GuiFormatMoneyFromCent(card.nBalanceCent)});
+    SetStatusText(dialog, L"添加卡成功。\n");
+}
+
+static void ExecuteQueryCard(HWND dialog, GuiState *state)
+{
+    std::string keyword = GuiWideToUtf8(ReadControlText(dialog, IDC_AMS_CARD_NAME));
+    size_t actual = 0;
+    size_t required = 0;
+    BizResult result = bizQueryCardsByKeyword(keyword.c_str(), nullptr, 0, &actual, &required);
+
+    if (result != BIZ_OK) {
+        ShowError(dialog, result);
+        return;
+    }
+
+    std::vector<Card> cards(required);
+    result = bizQueryCardsByKeyword(keyword.c_str(), cards.data(), cards.size(), &actual, &required);
+    if (result != BIZ_OK) {
+        ShowError(dialog, result);
+        return;
+    }
+
+    cards.resize(actual);
+    ShowCardQueryResult(state->listHandle, cards);
+    SetStatusText(dialog, L"查询完成。\n");
+}
+
+static void ExecuteLogon(HWND dialog, GuiState *state)
+{
+    LogonInfo info = {};
+    std::string cardName = GuiWideToUtf8(ReadControlText(dialog, IDC_AMS_CARD_NAME));
+    std::string password = GuiWideToUtf8(ReadControlText(dialog, IDC_AMS_CARD_PASSWORD));
+    BizResult result = bizStartBilling(cardName.c_str(), password.c_str(), time(nullptr), &info);
+
+    if (result != BIZ_OK) {
+        ShowError(dialog, result);
+        return;
+    }
+
+    ShowSingleResult(state->listHandle,
+        {L"卡号", L"余额", L"上机时间"},
+        {GuiUtf8ToWide(info.aCardName), GuiFormatMoneyFromCent(info.nBalanceCent), GuiFormatTime(info.tStart)});
+    SetStatusText(dialog, L"上机成功。\n");
+}
+
+static void ExecuteSettle(HWND dialog, GuiState *state)
+{
+    SettleInfo info = {};
+    std::string cardName = GuiWideToUtf8(ReadControlText(dialog, IDC_AMS_CARD_NAME));
+    std::string password = GuiWideToUtf8(ReadControlText(dialog, IDC_AMS_CARD_PASSWORD));
+    BizResult result = bizStopBilling(cardName.c_str(), password.c_str(), time(nullptr), &info);
+
+    if (result != BIZ_OK) {
+        ShowError(dialog, result);
+        return;
+    }
+
+    ShowSingleResult(state->listHandle,
+        {L"卡号", L"上机时间", L"下机时间", L"消费金额", L"余额"},
+        {GuiUtf8ToWide(info.aCardName), GuiFormatTime(info.tStart), GuiFormatTime(info.tEnd),
+            GuiFormatMoneyFromCent(info.nAmountCent), GuiFormatMoneyFromCent(info.nBalanceCent)});
+    SetStatusText(dialog, L"下机成功。\n");
+}
+
+static void ExecuteRecharge(HWND dialog, GuiState *state)
+{
+    Money money = {};
+    Card card = {};
+    std::string cardName = GuiWideToUtf8(ReadControlText(dialog, IDC_AMS_CARD_NAME));
+    std::string password = GuiWideToUtf8(ReadControlText(dialog, IDC_AMS_CARD_PASSWORD));
+    std::string amount = GuiWideToUtf8(ReadControlText(dialog, IDC_AMS_CARD_MONEY));
+    BizResult result = bizRecharge(cardName.c_str(), password.c_str(), amount.c_str(), &money, &card);
+
+    if (result != BIZ_OK) {
+        ShowError(dialog, result);
+        return;
+    }
+
+    ShowSingleResult(state->listHandle,
+        {L"卡号", L"充值金额", L"当前余额"},
+        {GuiUtf8ToWide(card.aCardName), GuiFormatMoneyFromCent(money.nMoneyCent), GuiFormatMoneyFromCent(card.nBalanceCent)});
+    SetStatusText(dialog, L"充值成功。\n");
+}
+
+static void ExecuteRefund(HWND dialog, GuiState *state)
+{
+    Money money = {};
+    Card card = {};
+    std::string cardName = GuiWideToUtf8(ReadControlText(dialog, IDC_AMS_CARD_NAME));
+    std::string password = GuiWideToUtf8(ReadControlText(dialog, IDC_AMS_CARD_PASSWORD));
+    std::string amount = GuiWideToUtf8(ReadControlText(dialog, IDC_AMS_CARD_MONEY));
+    BizResult result = bizRefundByAmount(cardName.c_str(), password.c_str(), amount.c_str(), &money, &card);
+
+    if (result != BIZ_OK) {
+        ShowError(dialog, result);
+        return;
+    }
+
+    ShowSingleResult(state->listHandle,
+        {L"卡号", L"退费金额", L"当前余额"},
+        {GuiUtf8ToWide(card.aCardName), GuiFormatMoneyFromCent(money.nMoneyCent), GuiFormatMoneyFromCent(card.nBalanceCent)});
+    SetStatusText(dialog, L"退费成功。\n");
+}
+
+static void ExecuteCancelCard(HWND dialog, GuiState *state)
+{
+    Money money = {};
+    Card card = {};
+    std::string cardName = GuiWideToUtf8(ReadControlText(dialog, IDC_AMS_CARD_NAME));
+    std::string password = GuiWideToUtf8(ReadControlText(dialog, IDC_AMS_CARD_PASSWORD));
+    BizResult result = bizCancelCard(cardName.c_str(), password.c_str(), &money, &card);
+
+    if (result != BIZ_OK) {
+        ShowError(dialog, result);
+        return;
+    }
+
+    ShowSingleResult(state->listHandle,
+        {L"卡号", L"退款金额"},
+        {GuiUtf8ToWide(card.aCardName), GuiFormatMoneyFromCent(money.nMoneyCent)});
+    SetStatusText(dialog, L"注销卡成功。\n");
+}
+
+static void ExecuteBilling(HWND dialog, GuiState *state)
+{
+    BillingQueryResult resultSet = {};
+    std::string cardName = GuiWideToUtf8(ReadControlText(dialog, IDC_AMS_CARD_NAME));
+    BizResult result = bizQueryBillingsByCardName(cardName.c_str(), &resultSet);
+
+    if (result != BIZ_OK) {
+        ShowError(dialog, result);
+        return;
+    }
+
+    ShowBillingResults(state->listHandle, resultSet.items, resultSet.count);
+    bizFreeBillingQueryResult(&resultSet);
+    SetStatusText(dialog, L"消费记录查询完成。\n");
+}
+
+static void ExecuteStatistics(HWND dialog, GuiState *state)
+{
+    BillingStatistics statistics = {};
+    std::string year = GuiWideToUtf8(ReadControlText(dialog, IDC_AMS_CARD_NAME));
+    BizResult result = bizGetBillingStatistics(year.c_str(), &statistics);
+
+    if (result != BIZ_OK) {
+        ShowError(dialog, result);
+        return;
+    }
+
+    PrepareList(state->listHandle);
+    AddListColumn(state->listHandle, 0, 220, L"项目");
+    AddListColumn(state->listHandle, 1, 220, L"金额(元)");
+
+    AddListRow(state->listHandle, 0, {L"总营业额", GuiFormatMoneyFromCent(statistics.totalAmountCent)});
+    for (int month = 0; month < 12; ++month) {
+        AddListRow(state->listHandle, month + 1,
+            {std::to_wstring(statistics.year) + L"年" + std::to_wstring(month + 1) + L"月",
+             GuiFormatMoneyFromCent(statistics.monthlyAmountCent[month])});
+    }
+
+    SetStatusText(dialog, L"营业额统计完成。\n");
+}
+
+static void ExecuteCurrentFeature(HWND dialog, GuiState *state)
+{
+    switch (state->feature) {
+    case GuiFeature::AddCard:
+        ExecuteAddCard(dialog, state);
+        break;
+    case GuiFeature::QueryCard:
+        ExecuteQueryCard(dialog, state);
+        break;
+    case GuiFeature::Logon:
+        ExecuteLogon(dialog, state);
+        break;
+    case GuiFeature::Settle:
+        ExecuteSettle(dialog, state);
+        break;
+    case GuiFeature::Recharge:
+        ExecuteRecharge(dialog, state);
+        break;
+    case GuiFeature::Refund:
+        ExecuteRefund(dialog, state);
+        break;
+    case GuiFeature::CancelCard:
+        ExecuteCancelCard(dialog, state);
+        break;
+    case GuiFeature::Billing:
+        ExecuteBilling(dialog, state);
+        break;
+    case GuiFeature::Statistics:
+        ExecuteStatistics(dialog, state);
+        break;
+    }
+}
+
+static INT_PTR CALLBACK MainDialogProc(HWND dialog, UINT message, WPARAM wParam, LPARAM lParam)
+{
+    GuiState *state = reinterpret_cast<GuiState *>(GetWindowLongPtrW(dialog, GWLP_USERDATA));
+
+    switch (message) {
+    case WM_INITDIALOG: {
+        GuiState *initState = reinterpret_cast<GuiState *>(lParam);
+        HWND listHandle = GetDlgItem(dialog, IDC_AMS_RESULT_LIST);
+        HFONT fontHandle = CreateFontW(-18, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+            DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+            CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Microsoft YaHei UI");
+
+        initState->listHandle = listHandle;
+        SetWindowLongPtrW(dialog, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(initState));
+        SendMessageW(dialog, WM_SETFONT, reinterpret_cast<WPARAM>(fontHandle), TRUE);
+
+        ListView_SetExtendedListViewStyle(listHandle, LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_DOUBLEBUFFER);
+        SwitchFeature(dialog, initState, GuiFeature::AddCard);
+        InitializeLayoutMetrics(dialog, initState);
+        {
+            RECT clientRect = {0};
+            GetClientRect(dialog, &clientRect);
+            UpdateMainLayout(dialog, initState, clientRect.right - clientRect.left, clientRect.bottom - clientRect.top);
+        }
+        return TRUE;
+    }
+    case WM_SIZE:
+        if (state == nullptr || wParam == SIZE_MINIMIZED) {
+            return TRUE;
+        }
+        UpdateMainLayout(dialog, state, LOWORD(lParam), HIWORD(lParam));
+        return TRUE;
+    case WM_VSCROLL:
+        if (state == nullptr) {
+            return TRUE;
+        }
+        {
+            RECT clientRect = {0};
+            GetClientRect(dialog, &clientRect);
+
+            SCROLLINFO scrollInfo = {0};
+            scrollInfo.cbSize = sizeof(scrollInfo);
+            scrollInfo.fMask = SIF_ALL;
+            GetScrollInfo(dialog, SB_VERT, &scrollInfo);
+
+            int lineStep = DialogUnitToPixelY(dialog, 16);
+            int pageStep = MaxInt((clientRect.bottom - clientRect.top) / 2, lineStep);
+            int newScrollY = state->scrollY;
+
+            switch (LOWORD(wParam)) {
+            case SB_LINEUP:
+                newScrollY -= lineStep;
+                break;
+            case SB_LINEDOWN:
+                newScrollY += lineStep;
+                break;
+            case SB_PAGEUP:
+                newScrollY -= pageStep;
+                break;
+            case SB_PAGEDOWN:
+                newScrollY += pageStep;
+                break;
+            case SB_THUMBTRACK:
+            case SB_THUMBPOSITION:
+                newScrollY = scrollInfo.nTrackPos;
+                break;
+            case SB_TOP:
+                newScrollY = 0;
+                break;
+            case SB_BOTTOM:
+                newScrollY = GetMaxScrollY(state, clientRect.bottom - clientRect.top);
+                break;
+            default:
+                break;
+            }
+
+            SetMainScrollY(dialog, state, newScrollY);
+        }
+        return TRUE;
+    case WM_MOUSEWHEEL:
+        if (state == nullptr) {
+            return TRUE;
+        }
+        {
+            int wheelDelta = GET_WHEEL_DELTA_WPARAM(wParam);
+            int wheelStep = DialogUnitToPixelY(dialog, 48);
+            int newScrollY = state->scrollY;
+
+            if (wheelDelta > 0) {
+                newScrollY -= wheelStep;
+            } else if (wheelDelta < 0) {
+                newScrollY += wheelStep;
+            }
+
+            SetMainScrollY(dialog, state, newScrollY);
+        }
+        return TRUE;
+    case WM_GETMINMAXINFO:
+        {
+            MINMAXINFO *info = reinterpret_cast<MINMAXINFO *>(lParam);
+            info->ptMinTrackSize.x = DialogUnitToPixelX(dialog, 420);
+            info->ptMinTrackSize.y = DialogUnitToPixelY(dialog, 160);
+        }
+        return TRUE;
+    case WM_COMMAND:
+        if (state == nullptr) {
+            return FALSE;
+        }
+        switch (LOWORD(wParam)) {
+        case IDC_AMS_NAV_ADD_CARD:
+            SwitchFeature(dialog, state, GuiFeature::AddCard);
+            return TRUE;
+        case IDC_AMS_NAV_QUERY_CARD:
+            SwitchFeature(dialog, state, GuiFeature::QueryCard);
+            return TRUE;
+        case IDC_AMS_NAV_LOGON:
+            SwitchFeature(dialog, state, GuiFeature::Logon);
+            return TRUE;
+        case IDC_AMS_NAV_SETTLE:
+            SwitchFeature(dialog, state, GuiFeature::Settle);
+            return TRUE;
+        case IDC_AMS_NAV_RECHARGE:
+            SwitchFeature(dialog, state, GuiFeature::Recharge);
+            return TRUE;
+        case IDC_AMS_NAV_REFUND:
+            SwitchFeature(dialog, state, GuiFeature::Refund);
+            return TRUE;
+        case IDC_AMS_NAV_CANCEL_CARD:
+            SwitchFeature(dialog, state, GuiFeature::CancelCard);
+            return TRUE;
+        case IDC_AMS_NAV_BILLING:
+            SwitchFeature(dialog, state, GuiFeature::Billing);
+            return TRUE;
+        case IDC_AMS_NAV_STAT:
+            SwitchFeature(dialog, state, GuiFeature::Statistics);
+            return TRUE;
+        case IDC_AMS_NAV_EXIT:
+            EndDialog(dialog, 0);
+            return TRUE;
+        case IDC_AMS_SUBMIT:
+            ExecuteCurrentFeature(dialog, state);
+            return TRUE;
+        default:
+            break;
+        }
+        break;
+    case WM_CLOSE:
+        EndDialog(dialog, 0);
+        return TRUE;
+    default:
+        break;
+    }
+
+    return FALSE;
+}
+
+INT_PTR RunMainGuiDialog(HINSTANCE instanceHandle, int showCommand)
+{
+    GuiState state = {};
+    INITCOMMONCONTROLSEX controls = {0};
+
+    controls.dwSize = sizeof(controls);
+    controls.dwICC = ICC_LISTVIEW_CLASSES | ICC_STANDARD_CLASSES;
+    InitCommonControlsEx(&controls);
+
+    (void)showCommand;
+    return DialogBoxParamW(instanceHandle,
+                           MAKEINTRESOURCEW(IDD_AMS_MAIN_GUI),
+                           nullptr,
+                           MainDialogProc,
+                           reinterpret_cast<LPARAM>(&state));
+}
