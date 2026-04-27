@@ -183,7 +183,7 @@
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\data\repository.c" />
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\platform\platform.c" />
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_main.cpp" />
-    <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_main_window.cpp" />
+    <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_main_window_scroll.cpp" />
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_utils.cpp" />
   </ItemGroup>
   <ItemGroup>
