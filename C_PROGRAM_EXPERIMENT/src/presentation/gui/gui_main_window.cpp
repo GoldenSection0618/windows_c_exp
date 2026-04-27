@@ -30,27 +30,7 @@ struct GuiState {
     HWND listHandle;
     HWND navBackgroundHandle;
     bool layoutInitialized;
-    int navLeft;
-    int navTop;
-    int navWidth;
-    int navBottomMargin;
-    int statusLeft;
-    int statusTop;
-    int statusHeight;
-    int statusRightMargin;
-    int listLeft;
-    int listTop;
-    int listRightMargin;
-    int listBottomMargin;
 };
-
-static RECT GetControlRectInClient(HWND dialog, HWND control)
-{
-    RECT rect = {0};
-    GetWindowRect(control, &rect);
-    MapWindowPoints(nullptr, dialog, reinterpret_cast<LPPOINT>(&rect), 2);
-    return rect;
-}
 
 static HWND FindNavBackgroundControl(HWND dialog)
 {
@@ -75,50 +55,59 @@ static int MaxInt(int value, int minValue)
 
 static void InitializeLayoutMetrics(HWND dialog, GuiState *state)
 {
-    RECT clientRect = {0};
-    RECT navRect = {0};
-    RECT statusRect = {0};
-    RECT listRect = {0};
-    HWND statusHandle = GetDlgItem(dialog, IDC_AMS_STATUS_TEXT);
-
     if (state == nullptr || state->layoutInitialized) {
         return;
     }
 
     state->navBackgroundHandle = FindNavBackgroundControl(dialog);
-    if (state->navBackgroundHandle == nullptr || statusHandle == nullptr || state->listHandle == nullptr) {
+    if (state->navBackgroundHandle == nullptr || state->listHandle == nullptr) {
         return;
     }
-
-    GetClientRect(dialog, &clientRect);
-    navRect = GetControlRectInClient(dialog, state->navBackgroundHandle);
-    statusRect = GetControlRectInClient(dialog, statusHandle);
-    listRect = GetControlRectInClient(dialog, state->listHandle);
-
-    state->navLeft = navRect.left;
-    state->navTop = navRect.top;
-    state->navWidth = navRect.right - navRect.left;
-    state->navBottomMargin = clientRect.bottom - navRect.bottom;
-
-    state->statusLeft = statusRect.left;
-    state->statusTop = statusRect.top;
-    state->statusHeight = statusRect.bottom - statusRect.top;
-    state->statusRightMargin = clientRect.right - statusRect.right;
-
-    state->listLeft = listRect.left;
-    state->listTop = listRect.top;
-    state->listRightMargin = clientRect.right - listRect.right;
-    state->listBottomMargin = clientRect.bottom - listRect.bottom;
 
     state->layoutInitialized = true;
 }
 
 static void UpdateMainLayout(HWND dialog, GuiState *state, int clientWidth, int clientHeight)
 {
+    const int navX = 6;
+    const int navY = 6;
+    const int navWidth = 120;
+    const int navBottomMargin = 6;
+
+    const int contentGap = 14;
+    const int rightMargin = 30;
+    const int rowGap = 10;
+    const int contentX = navX + navWidth + contentGap;
+
+    const int labelY = 20;
+    const int labelHeight = 16;
+    const int editY = 38;
+    const int editHeight = 24;
+    const int submitY = 72;
+    const int submitWidth = 80;
+    const int submitHeight = 26;
+    const int statusY = 78;
+    const int statusHeight = 20;
+    const int listY = 110;
+    const int listBottomMargin = 10;
+
+    HWND label1Handle = nullptr;
+    HWND cardNameHandle = nullptr;
+    HWND label2Handle = nullptr;
+    HWND cardPasswordHandle = nullptr;
+    HWND label3Handle = nullptr;
+    HWND cardMoneyHandle = nullptr;
+    HWND submitHandle = nullptr;
     HWND statusHandle = nullptr;
-    int navHeight = 0;
+    int contentWidth = 0;
+    int columnWidth = 0;
+    int columnX1 = 0;
+    int columnX2 = 0;
+    int columnX3 = 0;
+    int submitX = 0;
+    int statusX = 0;
     int statusWidth = 0;
-    int listWidth = 0;
+    int navHeight = 0;
     int listHeight = 0;
 
     if (state == nullptr) {
@@ -133,19 +122,48 @@ static void UpdateMainLayout(HWND dialog, GuiState *state, int clientWidth, int 
         return;
     }
 
+    label1Handle = GetDlgItem(dialog, IDC_AMS_LABEL_1);
+    cardNameHandle = GetDlgItem(dialog, IDC_AMS_CARD_NAME);
+    label2Handle = GetDlgItem(dialog, IDC_AMS_LABEL_2);
+    cardPasswordHandle = GetDlgItem(dialog, IDC_AMS_CARD_PASSWORD);
+    label3Handle = GetDlgItem(dialog, IDC_AMS_LABEL_3);
+    cardMoneyHandle = GetDlgItem(dialog, IDC_AMS_CARD_MONEY);
+    submitHandle = GetDlgItem(dialog, IDC_AMS_SUBMIT);
     statusHandle = GetDlgItem(dialog, IDC_AMS_STATUS_TEXT);
-    if (statusHandle == nullptr || state->listHandle == nullptr || state->navBackgroundHandle == nullptr) {
+    if (label1Handle == nullptr || cardNameHandle == nullptr ||
+        label2Handle == nullptr || cardPasswordHandle == nullptr ||
+        label3Handle == nullptr || cardMoneyHandle == nullptr ||
+        submitHandle == nullptr || statusHandle == nullptr ||
+        state->listHandle == nullptr || state->navBackgroundHandle == nullptr) {
         return;
     }
 
-    navHeight = MaxInt(clientHeight - state->navTop - state->navBottomMargin, 80);
-    statusWidth = MaxInt(clientWidth - state->statusLeft - state->statusRightMargin, 120);
-    listWidth = MaxInt(clientWidth - state->listLeft - state->listRightMargin, 200);
-    listHeight = MaxInt(clientHeight - state->listTop - state->listBottomMargin, 120);
+    contentWidth = MaxInt(clientWidth - contentX - rightMargin, 210);
+    columnWidth = MaxInt((contentWidth - rowGap * 2) / 3, 60);
 
-    MoveWindow(state->navBackgroundHandle, state->navLeft, state->navTop, state->navWidth, navHeight, TRUE);
-    MoveWindow(statusHandle, state->statusLeft, state->statusTop, statusWidth, state->statusHeight, TRUE);
-    MoveWindow(state->listHandle, state->listLeft, state->listTop, listWidth, listHeight, TRUE);
+    columnX1 = contentX;
+    columnX2 = columnX1 + columnWidth + rowGap;
+    columnX3 = columnX2 + columnWidth + rowGap;
+
+    submitX = contentX;
+    statusX = submitX + submitWidth + rowGap;
+
+    navHeight = MaxInt(clientHeight - navY - navBottomMargin, 80);
+    statusWidth = MaxInt(contentX + contentWidth - statusX, 80);
+    listHeight = MaxInt(clientHeight - listY - listBottomMargin, 120);
+
+    MoveWindow(state->navBackgroundHandle, navX, navY, navWidth, navHeight, TRUE);
+
+    MoveWindow(label1Handle, columnX1, labelY, columnWidth, labelHeight, TRUE);
+    MoveWindow(cardNameHandle, columnX1, editY, columnWidth, editHeight, TRUE);
+    MoveWindow(label2Handle, columnX2, labelY, columnWidth, labelHeight, TRUE);
+    MoveWindow(cardPasswordHandle, columnX2, editY, columnWidth, editHeight, TRUE);
+    MoveWindow(label3Handle, columnX3, labelY, columnWidth, labelHeight, TRUE);
+    MoveWindow(cardMoneyHandle, columnX3, editY, columnWidth, editHeight, TRUE);
+
+    MoveWindow(submitHandle, submitX, submitY, submitWidth, submitHeight, TRUE);
+    MoveWindow(statusHandle, statusX, statusY, statusWidth, statusHeight, TRUE);
+    MoveWindow(state->listHandle, contentX, listY, contentWidth, listHeight, TRUE);
 }
 
 static std::wstring ReadControlText(HWND dialog, int controlId)
