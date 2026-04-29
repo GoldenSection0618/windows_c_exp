@@ -178,6 +178,7 @@
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\business_result.c" />
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\session_service.c" />
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\card_service.c" />
+    <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\card_query_service.c" />
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\statistics_service.c" />
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\cancel_service.c" />
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\card_auth.c" />
@@ -210,6 +211,7 @@
     <ClInclude Include="..\C_PROGRAM_EXPERIMENT\include\business.h" />
     <ClInclude Include="..\C_PROGRAM_EXPERIMENT\include\data_file_utils.h" />
     <ClInclude Include="..\C_PROGRAM_EXPERIMENT\src\business\business_internal.h" />
+    <ClInclude Include="..\C_PROGRAM_EXPERIMENT\include\card_query.h" />
     <ClInclude Include="..\C_PROGRAM_EXPERIMENT\include\card_repository.h" />
     <ClInclude Include="..\C_PROGRAM_EXPERIMENT\include\card_storage.h" />
     <ClInclude Include="..\C_PROGRAM_EXPERIMENT\include\card_storage_file.h" />

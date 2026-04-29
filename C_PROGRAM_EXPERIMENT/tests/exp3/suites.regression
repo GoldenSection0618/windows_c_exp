@@ -1,9 +1,0 @@
-menu
-menu_add_amount_precision_invalid
-menu_add_amount_huge_too_large
-menu_add_card_dash_invalid
-menu_add_password_dash_invalid
-menu_add_password_pipe
-menu_add_card_pipe
-menu_record_format_error
-menu_time_parse_error
