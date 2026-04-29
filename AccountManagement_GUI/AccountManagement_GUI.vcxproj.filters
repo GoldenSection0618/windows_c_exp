@@ -90,6 +90,18 @@
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_action_controller.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_action_utils.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_auth_actions.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_admin_actions.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_user_actions.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_utils.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -165,6 +177,18 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_main_window_internal.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_action_utils.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_auth_actions.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_admin_actions.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_user_actions.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_resource.h">

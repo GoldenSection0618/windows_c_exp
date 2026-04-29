@@ -42,6 +42,10 @@
     <ClCompile Include="src\presentation\gui\gui_result_view.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="src\presentation\gui\gui_mode_config.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="src\presentation\gui\gui_action_controller.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="src\presentation\gui\gui_action_utils.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="src\presentation\gui\gui_auth_actions.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="src\presentation\gui\gui_admin_actions.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="src\presentation\gui\gui_user_actions.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="src\presentation\gui\gui_utils.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="src\presentation\menu.c"><Filter>Source Files</Filter></ClCompile>
   </ItemGroup>
@@ -78,6 +82,10 @@
     <ClInclude Include="src\presentation\gui\gui_main_window.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="src\presentation\gui\gui_main_window_core.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="src\presentation\gui\gui_main_window_internal.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="src\presentation\gui\gui_action_utils.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="src\presentation\gui\gui_auth_actions.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="src\presentation\gui\gui_admin_actions.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="src\presentation\gui\gui_user_actions.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="src\presentation\gui\gui_resource.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="src\presentation\gui\gui_utils.h"><Filter>Header Files</Filter></ClInclude>
   </ItemGroup>
