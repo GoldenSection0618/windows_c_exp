@@ -2,6 +2,7 @@
 #define GUI_MAIN_WINDOW_INTERNAL_H
 
 #include "business.h"
+#include "card_file_maintenance.h"
 
 #include <windows.h>
 
@@ -16,6 +17,7 @@ enum class GuiMode {
     AdminRecharge,
     AdminRefund,
     AdminStatistics,
+    AdminFileMaintenance,
     UserBalance,
     UserStart,
     UserStop,
@@ -38,6 +40,7 @@ void GuiShowMoney(HWND listHandle, const Card &card, const Money &money, const w
 void GuiShowSettle(HWND listHandle, const SettleInfo &info);
 void GuiShowLogon(HWND listHandle, const LogonInfo &info);
 void GuiShowStatistics(HWND listHandle, const BillingStatistics &statistics);
+void GuiShowCardFileHealthResult(HWND listHandle, const CardFileMaintenanceResult &result);
 
 void GuiSwitchMode(HWND dialog, GuiState *state, GuiMode mode);
 void GuiExecuteSubmit(HWND dialog, GuiState *state);

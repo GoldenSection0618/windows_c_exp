@@ -2,6 +2,7 @@
 
 #include "card_query.h"
 #include "card_validator.h"
+#include "card_file_maintenance.h"
 #include "gui_resource.h"
 #include "gui_utils.h"
 
@@ -330,6 +331,69 @@ static void HandleUserCancel(HWND dialog, GuiState *state, const std::string &ca
 }
 
 
+static void HandleAdminFileMaintenance(HWND dialog, GuiState *state, const std::string &operationText, const std::string &backupPathText, const std::string &confirmText)
+{
+    int op = ParseGuiInt(operationText, 0);
+    if (op < 1 || op > 4) {
+        SetStatus(dialog, L"文件维护操作编号无效，请输入 1~4。");
+        return;
+    }
+
+    CardFileMaintenanceResult result;
+    BizResult bizRet;
+
+    if (op == 1) {
+        bizRet = bizCheckCardFileHealth(&result);
+        if (bizRet == BIZ_OK) {
+            GuiShowCardFileHealthResult(state->listHandle, result);
+            SetStatus(dialog, L"健康检查完成，异常记录已隔离到 data/cards_error.txt。");
+            bizFreeCardFileMaintenanceResult(&result);
+        } else {
+            SetStatus(dialog, ErrorText(bizRet));
+        }
+    } else if (op == 2) {
+        bizRet = bizCheckCardFileHealth(&result);
+        if (bizRet == BIZ_OK) {
+            BizResult reportRet = bizExportCardFileHealthReport(&result);
+            GuiShowCardFileHealthResult(state->listHandle, result);
+            if (reportRet == BIZ_OK) {
+                SetStatus(dialog, L"健康检查报告已导出到 data/cards_health_report.txt。");
+            } else {
+                SetStatus(dialog, ErrorText(reportRet));
+            }
+            bizFreeCardFileMaintenanceResult(&result);
+        } else {
+            SetStatus(dialog, ErrorText(bizRet));
+        }
+    } else if (op == 3) {
+        char backupPath[256];
+        bizRet = bizBackupCardFile(backupPath, sizeof(backupPath));
+        if (bizRet == BIZ_OK) {
+            GuiPrepareList(state->listHandle);
+            GuiShowMessageRow(state->listHandle, GuiUtf8ToWide(("备份路径：" + std::string(backupPath)).c_str()).c_str());
+            SetStatus(dialog, L"备份成功。");
+        } else {
+            SetStatus(dialog, ErrorText(bizRet));
+        }
+    } else if (op == 4) {
+        if (backupPathText.empty()) {
+            SetStatus(dialog, L"恢复失败：请填写备份路径。");
+            return;
+        }
+        if (confirmText != "YES") {
+            SetStatus(dialog, L"恢复已取消：第三栏必须输入 YES。");
+            return;
+        }
+        bizRet = bizRecoverCardFile(backupPathText.c_str());
+        if (bizRet == BIZ_OK) {
+            SetStatus(dialog, L"恢复成功。");
+        } else {
+            SetStatus(dialog, ErrorText(bizRet));
+        }
+    }
+}
+
+
 void GuiExecuteSubmit(HWND dialog, GuiState *state)
 {
     std::string text1 = GuiWideToUtf8(ReadText(dialog, IDC_AMS_CARD_NAME));
@@ -364,6 +428,9 @@ void GuiExecuteSubmit(HWND dialog, GuiState *state)
         break;
     case GuiMode::AdminStatistics:
         HandleAdminStatistics(dialog, state, text1);
+        break;
+    case GuiMode::AdminFileMaintenance:
+        HandleAdminFileMaintenance(dialog, state, text1, text2, text3);
         break;
     case GuiMode::UserBalance:
         HandleUserBalance(dialog, state);

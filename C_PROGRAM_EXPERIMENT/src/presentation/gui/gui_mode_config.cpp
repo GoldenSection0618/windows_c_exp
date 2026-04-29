@@ -95,8 +95,8 @@ static const NavButtonConfig kAdminNav[] = {
     {IDC_AMS_NAV_RECHARGE, L"充值", true},
     {IDC_AMS_NAV_REFUND, L"退费", true},
     {IDC_AMS_NAV_CANCEL_CARD, L"营业额统计", true},
-    {IDC_AMS_NAV_BILLING, L"退出登录", true},
-    {IDC_AMS_NAV_STAT, L"", false},
+    {IDC_AMS_NAV_BILLING, L"文件维护", true},
+    {IDC_AMS_NAV_STAT, L"退出登录", true},
     {IDC_AMS_NAV_EXIT, L"", false},
     {0, nullptr, false},
 };
@@ -126,6 +126,7 @@ static const ModeConfig kModeConfigs[] = {
     {GuiMode::AdminRecharge, L"计费管理系统 - 管理员后台", kAdminNav, {L"卡号", true, L"", false, L"充值金额(元)", true, false}, L"充值", L"管理员资金操作：只需要卡号和金额，不需要卡密码。", false},
     {GuiMode::AdminRefund, L"计费管理系统 - 管理员后台", kAdminNav, {L"卡号", true, L"", false, L"退费金额(元)", true, false}, L"退费", L"管理员资金操作：只需要卡号和金额，不需要卡密码。", false},
     {GuiMode::AdminStatistics, L"计费管理系统 - 管理员后台", kAdminNav, {L"年月(YYYY-MM)", true, L"", false, L"", false, false}, L"统计", L"管理员：按月统计营业额，例如 2026-04。", false},
+    {GuiMode::AdminFileMaintenance, L"计费管理系统 - 管理员后台", kAdminNav, {L"操作编号(1~4)", true, L"备份路径", true, L"确认恢复(YES)", true, false}, L"执行维护", L"操作：1健康检查 / 2导出报告 / 3手动备份 / 4恢复备份；恢复时需填写备份路径并在第三栏输入 YES。", false},
     {GuiMode::UserBalance, L"计费管理系统 - 用户中心", kUserNav, {L"", false, L"", false, L"", false, false}, L"查询余额", L"用户：当前登录卡号 ", true},
     {GuiMode::UserStart, L"计费管理系统 - 用户中心", kUserNav, {L"", false, L"", false, L"", false, false}, L"上机", L"用户：当前登录卡号 ", true},
     {GuiMode::UserStop, L"计费管理系统 - 用户中心", kUserNav, {L"", false, L"", false, L"", false, false}, L"下机", L"用户：当前登录卡号 ", true},

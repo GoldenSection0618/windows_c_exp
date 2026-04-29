@@ -165,3 +165,36 @@ void GuiShowStatistics(HWND listHandle, const BillingStatistics &statistics)
 }
 
 
+void GuiShowCardFileHealthResult(HWND listHandle, const CardFileMaintenanceResult &result)
+{
+    GuiPrepareList(listHandle);
+    AddColumn(listHandle, 0, 400, L"健康检查明细");
+
+    std::vector<std::wstring> lines;
+    lines.push_back(L"cards.txt 健康检查结果");
+    lines.push_back(L"扫描行数：" + std::to_wstring(result.report.totalLines));
+    lines.push_back(L"有效记录：" + std::to_wstring(result.report.validLines));
+    lines.push_back(L"异常记录：" + std::to_wstring(result.report.invalidLines));
+    lines.push_back(L"重复卡号：" + std::to_wstring(result.report.duplicateCards));
+    lines.push_back(L"超长记录：" + std::to_wstring(result.report.lineTooLongCount));
+    lines.push_back(L"异常记录文件：data/cards_error.txt");
+
+    size_t limit = (result.issueCount > 20) ? 20 : result.issueCount;
+    for (size_t i = 0; i < limit; i++) {
+        const CardFileIssue &issue = result.issues[i];
+        std::wstring line = L"Line " + std::to_wstring(issue.lineNo) + L" | ";
+        std::string typeStr = dataGetCardFileIssueTypeName(issue.type);
+        line += GuiUtf8ToWide(typeStr.c_str()) + L" | " + GuiUtf8ToWide(issue.reason);
+        lines.push_back(line);
+    }
+
+    if (result.issueCount > 20) {
+        lines.push_back(L"...(更多异常略)");
+    }
+
+    for (size_t i = 0; i < lines.size(); i++) {
+        AddRow(listHandle, i, {lines[i]});
+    }
+}
+
+

@@ -1,6 +1,7 @@
 #include "card_repository.h"
 #include "card_storage_file.h"
 #include "card_storage.h"
+#include "card_file_backup.h"
 #include "common.h"
 #include "data_file_utils.h"
 
@@ -144,6 +145,12 @@ static DataResult rewriteCardFile(void)
 
     ret = dataEnsureDataDirByFilePath(CARD_DATA_FILE_PATH);
     if (ret != DATA_OK) {
+        return ret;
+    }
+
+    char backupPath[CARD_FILE_BACKUP_PATH_LEN];
+    ret = dataBackupCardFile(backupPath, sizeof(backupPath));
+    if (ret != DATA_OK && ret != DATA_ERR_FILE_NOT_FOUND) {
         return ret;
     }
 

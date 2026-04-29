@@ -28,7 +28,11 @@
     <ClCompile Include="src\data\data_file_utils.c"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="src\data\money_repository.c"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="src\data\repository.c"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="src\data\card_file_health.c"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="src\data\card_file_backup.c"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="src\business\card_file_maintenance_service.c"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="src\platform\platform.c"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="src\presentation\card_file_maintenance_ui.c"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="src\presentation\card_ui.c"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="src\presentation\card_view.c"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="src\presentation\card_query_view.c"><Filter>Source Files</Filter></ClCompile>
@@ -52,6 +56,10 @@
     <ClInclude Include="include\data_file_utils.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="src\business\business_internal.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="include\card_query.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="include\card_file_health.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="include\card_file_backup.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="include\card_file_maintenance.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="include\card_file_maintenance_ui.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="include\card_repository.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="include\card_storage.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="include\card_storage_file.h"><Filter>Header Files</Filter></ClInclude>

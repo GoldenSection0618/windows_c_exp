@@ -36,7 +36,8 @@ static const NavRoute kNavRoutes[] = {
     {LOGIN_ROLE_ADMIN, IDC_AMS_NAV_RECHARGE, NavAction::SwitchMode, GuiMode::AdminRecharge},
     {LOGIN_ROLE_ADMIN, IDC_AMS_NAV_REFUND, NavAction::SwitchMode, GuiMode::AdminRefund},
     {LOGIN_ROLE_ADMIN, IDC_AMS_NAV_CANCEL_CARD, NavAction::SwitchMode, GuiMode::AdminStatistics},
-    {LOGIN_ROLE_ADMIN, IDC_AMS_NAV_BILLING, NavAction::Logout, GuiMode::AuthAdmin},
+    {LOGIN_ROLE_ADMIN, IDC_AMS_NAV_BILLING, NavAction::SwitchMode, GuiMode::AdminFileMaintenance},
+    {LOGIN_ROLE_ADMIN, IDC_AMS_NAV_STAT, NavAction::Logout, GuiMode::AuthAdmin},
 
     {LOGIN_ROLE_USER, IDC_AMS_NAV_ADD_CARD, NavAction::SwitchMode, GuiMode::UserBalance},
     {LOGIN_ROLE_USER, IDC_AMS_NAV_QUERY_CARD, NavAction::SwitchMode, GuiMode::UserStart},
