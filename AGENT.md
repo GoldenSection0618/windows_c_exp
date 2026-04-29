@@ -44,7 +44,8 @@
 - 下机：只需要卡号，不需要卡密码。
 - 充值：只需要卡号和金额，不需要卡密码。
 - 退费：只需要卡号和金额，不需要卡密码。
-- 营业额统计：按年份统计总营业额和各月营业额。
+- 高级查询：支持按卡状态筛选（全部/未上机/上机/已注销/低余额）、按多种方式排序（余额升降、使用次数降、累计消费降、最后使用时间降），可选低余额阈值过滤。
+- 营业额统计：输入 `YYYY-MM` 格式，按指定月份统计该月营业额。
 
 ## 工程结构
 
@@ -109,8 +110,9 @@ C_PROGRAM_EXPERIMENT/src/business/
 billing_service.c       上机、下机核心逻辑
 money_service.c         充值、退费逻辑
 card_service.c          开卡、注册、查卡、模糊查询、余额查询
+card_query_service.c    管理员高级查询：按状态筛选、排序、低余额查询
 session_service.c       登录态、管理员登录、用户登录、用户/管理员包装 API
-statistics_service.c    消费记录查询、营业额统计
+statistics_service.c    消费记录查询、YYYY-MM 月营业额统计
 cancel_service.c        注销卡逻辑
 card_auth.c             卡号/密码认证与卡加载辅助函数
 business_result.c       DataResult 到 BizResult 映射，以及错误文案
@@ -196,6 +198,9 @@ C_PROGRAM_EXPERIMENT/src/presentation/gui/
 
 ```text
 gui_main.cpp                    GUI 程序入口
+gui_main_window.cpp             主窗口 WinMain 及居中辅助
+gui_main_window.h               主窗口公共声明
+gui_main_window_centered_wrapper.cpp  居中包装，处理 DPI 与窗口位置
 gui_main_window_core.cpp        Win32 dialog 生命周期、窗口初始化、消息分发、导航路由
 gui_main_window_core.h          对外只暴露 RunMainGuiDialog
 gui_main_window_internal.h      GUI 内部共享状态和函数声明
@@ -203,6 +208,7 @@ gui_mode_config.cpp             GuiMode 到按钮、输入框、标题、状态�
 gui_action_controller.cpp       根据当前 GuiMode 执行业务提交
 gui_result_view.cpp             ListView 表格渲染
 gui_utils.cpp                   UTF-8/宽字符转换、金额/时间/状态格式化
+gui_utils.h                     GUI 工具函数声明
 gui_resource.rc                 Win32 资源文件
 gui_resource.h                  控件 ID 定义
 app.manifest                    Windows 视觉样式 manifest
@@ -221,9 +227,9 @@ C_PROGRAM_EXPERIMENT/include/common.h
 主要数据文件：
 
 ```text
-card.txt      卡信息
-billing.txt   计费记录
-money.txt     充值/退费流水
+data/cards.txt     卡信息
+data/billings.txt  计费记录
+data/money.txt     充值/退费流水
 ```
 
 文件格式由各 repository 负责读写。不要随意改变字段顺序和分隔符，否则会破坏已有数据兼容性。
