@@ -98,19 +98,22 @@ static int HandleNavCommand(HWND dialog, GuiState *state, int controlId)
 
 static void ResizeAndCenterDialog(HWND dialog)
 {
-    int clientWidth = 760;
-    int clientHeight = 560;
+    RECT rect = {0, 0, 430, 280};
+    MapDialogRect(dialog, &rect);
+
     LONG_PTR style = GetWindowLongPtrW(dialog, GWL_STYLE);
-    RECT rect = {0, 0, clientWidth, clientHeight};
     AdjustWindowRectEx(&rect, static_cast<DWORD>(style), FALSE, static_cast<DWORD>(GetWindowLongPtrW(dialog, GWL_EXSTYLE)));
 
     int width = rect.right - rect.left;
     int height = rect.bottom - rect.top;
-    RECT work = {0};
-    SystemParametersInfoW(SPI_GETWORKAREA, 0, &work, 0);
-    int x = work.left + ((work.right - work.left) - width) / 2;
-    int y = work.top + ((work.bottom - work.top) - height) / 2;
-    SetWindowPos(dialog, nullptr, x, y, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
+
+    HMONITOR monitor = MonitorFromWindow(dialog, MONITOR_DEFAULTTOPRIMARY);
+    MONITORINFO monitorInfo = {sizeof(MONITORINFO)};
+    if (GetMonitorInfoW(monitor, &monitorInfo)) {
+        int x = monitorInfo.rcWork.left + ((monitorInfo.rcWork.right - monitorInfo.rcWork.left) - width) / 2;
+        int y = monitorInfo.rcWork.top + ((monitorInfo.rcWork.bottom - monitorInfo.rcWork.top) - height) / 2;
+        SetWindowPos(dialog, nullptr, x, y, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
+    }
 }
 
 static INT_PTR CALLBACK MainDialogProc(HWND dialog, UINT message, WPARAM wParam, LPARAM lParam)
@@ -126,6 +129,32 @@ static INT_PTR CALLBACK MainDialogProc(HWND dialog, UINT message, WPARAM wParam,
         ListView_SetExtendedListViewStyle(initState->listHandle, LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_DOUBLEBUFFER);
         ResizeAndCenterDialog(dialog);
         GuiSwitchMode(dialog, initState, GuiMode::AuthAdmin);
+        return TRUE;
+    }
+    case WM_GETMINMAXINFO: {
+        MINMAXINFO *mmi = reinterpret_cast<MINMAXINFO *>(lParam);
+        RECT minRect = {0, 0, 430, 280};
+        MapDialogRect(dialog, &minRect);
+        AdjustWindowRectEx(&minRect, static_cast<DWORD>(GetWindowLongPtrW(dialog, GWL_STYLE)), FALSE, static_cast<DWORD>(GetWindowLongPtrW(dialog, GWL_EXSTYLE)));
+        mmi->ptMinTrackSize.x = minRect.right - minRect.left;
+        mmi->ptMinTrackSize.y = minRect.bottom - minRect.top;
+        return TRUE;
+    }
+    case WM_SIZE: {
+        int cx = LOWORD(lParam);
+        int cy = HIWORD(lParam);
+        if (cx == 0 || cy == 0) return TRUE;
+
+        RECT navFrame = {6, 6, 120, 268};
+        MapDialogRect(dialog, &navFrame);
+        navFrame.bottom = cy - navFrame.top;
+        SetWindowPos(GetDlgItem(dialog, IDC_AMS_NAV_FRAME), nullptr, navFrame.left, navFrame.top, navFrame.right - navFrame.left, navFrame.bottom - navFrame.top, SWP_NOZORDER);
+
+        RECT listBase = {140, 110, 430, 150};
+        MapDialogRect(dialog, &listBase);
+
+        SetWindowPos(GetDlgItem(dialog, IDC_AMS_RESULT_LIST), nullptr, listBase.left, listBase.top, cx - listBase.left - navFrame.left, cy - listBase.top - navFrame.top, SWP_NOZORDER);
+
         return TRUE;
     }
     case WM_COMMAND:

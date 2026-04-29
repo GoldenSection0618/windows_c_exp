@@ -203,33 +203,37 @@ card_file_maintenance_ui.c
 
 ### 6. 表示层：Win32 GUI
 
-GUI 代码在：
+当前有效 GUI 启动工程是：
 
 ```text
-C_PROGRAM_EXPERIMENT/src/presentation/gui/
+AccountManagement_GUI
 ```
 
-主要文件：
+`C_PROGRAM_EXPERIMENT` 主要作为控制台/兼容工程使用，不应作为新版 GUI 的启动项目。
+
+GUI 入口与文件职责：
 
 ```text
-gui_main.cpp                    GUI 程序入口
-gui_main_window.cpp             主窗口 WinMain 及居中辅助
-gui_main_window.h               主窗口公共声明
-gui_main_window_centered_wrapper.cpp  居中包装，处理 DPI 与窗口位置
-gui_main_window_core.cpp        Win32 dialog 生命周期、窗口初始化、消息分发、导航路由
-gui_main_window_core.h          对外只暴露 RunMainGuiDialog
-gui_main_window_internal.h      GUI 内部共享状态和函数声明
-gui_mode_config.cpp             GuiMode 到按钮、输入框、标题、状态文案的配置
-gui_action_controller.cpp       根据当前 GuiMode 执行业务提交
-gui_result_view.cpp             ListView 表格渲染
-gui_utils.cpp                   UTF-8/宽字符转换、金额/时间/状态格式化
-gui_utils.h                     GUI 工具函数声明
-gui_resource.rc                 Win32 资源文件
-gui_resource.h                  控件 ID 定义
-app.manifest                    Windows 视觉样式 manifest
+gui_main.cpp
+  Windows GUI 入口，定义 wWinMain()，调用 RunMainGuiDialog()。
+
+gui_main_window_core.cpp
+  真实主窗口实现，负责 Dialog 生命周期、WM_INITDIALOG、WM_SIZE、WM_GETMINMAXINFO、导航路由、初始化布局。
+
+gui_main_window_core.h
+  对外暴露 RunMainGuiDialog()。
+
+gui_main_window_internal.h
+  GUI 内部共享状态、GuiMode、函数声明。
+
+gui_main_window_centered_wrapper.cpp
+  兼容包装文件，仅供 AccountManagement_GUI 工程引用。当前只转发到 RunMainGuiDialog()，不承载主要布局逻辑。
+
+gui_main_window.cpp
+  旧工程残留/兼容空壳，不应再作为主窗口实现依据。
 ```
 
-GUI 当前采用 Win32 Dialog + Resource 的方式实现。不要引入 WebView、Qt、MFC 等新 GUI 框架，除非用户明确要求。
+修改 GUI 时，以 `AccountManagement_GUI` 的运行效果为准。
 
 ## 数据文件
 
