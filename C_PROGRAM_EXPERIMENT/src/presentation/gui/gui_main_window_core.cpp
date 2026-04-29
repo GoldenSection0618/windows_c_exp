@@ -23,6 +23,27 @@ struct NavRoute {
     GuiMode targetMode;
 };
 
+static const int kMinClientWidthDlu = 580;
+static const int kMinClientHeightDlu = 320;
+static const int kNavLeftDlu = 6;
+static const int kNavTopDlu = 6;
+static const int kNavWidthDlu = 120;
+static const int kContentLeftDlu = 140;
+static const int kRightMarginDlu = 10;
+static const int kFieldTopDlu = 20;
+static const int kLabelHeightDlu = 16;
+static const int kEditTopDlu = 38;
+static const int kEditHeightDlu = 24;
+static const int kColumnGapDlu = 20;
+static const int kSubmitTopDlu = 72;
+static const int kSubmitWidthDlu = 80;
+static const int kSubmitHeightDlu = 26;
+static const int kStatusLeftGapDlu = 10;
+static const int kStatusTopDlu = 78;
+static const int kStatusHeightDlu = 20;
+static const int kListTopDlu = 110;
+static const int kBottomMarginDlu = 8;
+
 static const NavRoute kNavRoutes[] = {
     {LOGIN_ROLE_NONE, IDC_AMS_NAV_ADD_CARD, NavAction::SwitchMode, GuiMode::AuthAdmin},
     {LOGIN_ROLE_NONE, IDC_AMS_NAV_QUERY_CARD, NavAction::SwitchMode, GuiMode::AuthUserLogin},
@@ -76,6 +97,43 @@ static const NavRoute *FindNavRoute(LoginRole role, int controlId)
     return nullptr;
 }
 
+static RECT DluRect(HWND dialog, int left, int top, int right, int bottom)
+{
+    RECT rect = {left, top, right, bottom};
+    MapDialogRect(dialog, &rect);
+    return rect;
+}
+
+static int DialogUnitToPixelX(HWND dialog, int value)
+{
+    RECT rect = DluRect(dialog, 0, 0, value, 0);
+    return rect.right;
+}
+
+static int DialogUnitToPixelY(HWND dialog, int value)
+{
+    RECT rect = DluRect(dialog, 0, 0, 0, value);
+    return rect.bottom;
+}
+
+static void MoveControl(HWND dialog, int controlId, int x, int y, int width, int height)
+{
+    HWND control = GetDlgItem(dialog, controlId);
+    if (control != nullptr) {
+        SetWindowPos(control, nullptr, x, y, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
+    }
+}
+
+static RECT WindowRectForClientSize(HWND dialog, int clientWidth, int clientHeight)
+{
+    RECT rect = {0, 0, clientWidth, clientHeight};
+    AdjustWindowRectEx(&rect,
+                       static_cast<DWORD>(GetWindowLongPtrW(dialog, GWL_STYLE)),
+                       FALSE,
+                       static_cast<DWORD>(GetWindowLongPtrW(dialog, GWL_EXSTYLE)));
+    return rect;
+}
+
 static int HandleNavCommand(HWND dialog, GuiState *state, int controlId)
 {
     const NavRoute *route = FindNavRoute(CurrentRole(state), controlId);
@@ -100,22 +158,78 @@ static int HandleNavCommand(HWND dialog, GuiState *state, int controlId)
 
 static void ResizeAndCenterDialog(HWND dialog)
 {
-    RECT rect = {0, 0, 430, 280};
-    MapDialogRect(dialog, &rect);
-
-    LONG_PTR style = GetWindowLongPtrW(dialog, GWL_STYLE);
-    AdjustWindowRectEx(&rect, static_cast<DWORD>(style), FALSE, static_cast<DWORD>(GetWindowLongPtrW(dialog, GWL_EXSTYLE)));
-
-    int width = rect.right - rect.left;
-    int height = rect.bottom - rect.top;
-
     HMONITOR monitor = MonitorFromWindow(dialog, MONITOR_DEFAULTTOPRIMARY);
     MONITORINFO monitorInfo = {sizeof(MONITORINFO)};
     if (GetMonitorInfoW(monitor, &monitorInfo)) {
+        int clientWidth = DialogUnitToPixelX(dialog, kMinClientWidthDlu);
+        int clientHeight = DialogUnitToPixelY(dialog, kMinClientHeightDlu);
+        int workWidth = monitorInfo.rcWork.right - monitorInfo.rcWork.left;
+        int workHeight = monitorInfo.rcWork.bottom - monitorInfo.rcWork.top;
+
+        RECT rect = WindowRectForClientSize(dialog, clientWidth, clientHeight);
+        int frameWidth = (rect.right - rect.left) - clientWidth;
+        int frameHeight = (rect.bottom - rect.top) - clientHeight;
+        clientWidth = min(clientWidth, max(1, workWidth - frameWidth));
+        clientHeight = min(clientHeight, max(1, workHeight - frameHeight));
+        rect = WindowRectForClientSize(dialog, clientWidth, clientHeight);
+
+        int width = rect.right - rect.left;
+        int height = rect.bottom - rect.top;
         int x = monitorInfo.rcWork.left + ((monitorInfo.rcWork.right - monitorInfo.rcWork.left) - width) / 2;
         int y = monitorInfo.rcWork.top + ((monitorInfo.rcWork.bottom - monitorInfo.rcWork.top) - height) / 2;
         SetWindowPos(dialog, nullptr, x, y, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
     }
+}
+
+static void LayoutDialog(HWND dialog, int clientWidth, int clientHeight)
+{
+    int navLeft = DialogUnitToPixelX(dialog, kNavLeftDlu);
+    int navTop = DialogUnitToPixelY(dialog, kNavTopDlu);
+    int navWidth = DialogUnitToPixelX(dialog, kNavWidthDlu);
+    int contentLeft = DialogUnitToPixelX(dialog, kContentLeftDlu);
+    int rightMargin = DialogUnitToPixelX(dialog, kRightMarginDlu);
+    int columnGap = DialogUnitToPixelX(dialog, kColumnGapDlu);
+    int labelTop = DialogUnitToPixelY(dialog, kFieldTopDlu);
+    int labelHeight = DialogUnitToPixelY(dialog, kLabelHeightDlu);
+    int editTop = DialogUnitToPixelY(dialog, kEditTopDlu);
+    int editHeight = DialogUnitToPixelY(dialog, kEditHeightDlu);
+    int submitTop = DialogUnitToPixelY(dialog, kSubmitTopDlu);
+    int submitWidth = DialogUnitToPixelX(dialog, kSubmitWidthDlu);
+    int submitHeight = DialogUnitToPixelY(dialog, kSubmitHeightDlu);
+    int statusLeftGap = DialogUnitToPixelX(dialog, kStatusLeftGapDlu);
+    int statusTop = DialogUnitToPixelY(dialog, kStatusTopDlu);
+    int statusHeight = DialogUnitToPixelY(dialog, kStatusHeightDlu);
+    int listTop = DialogUnitToPixelY(dialog, kListTopDlu);
+    int bottomMargin = DialogUnitToPixelY(dialog, kBottomMarginDlu);
+    int contentRight = clientWidth - rightMargin;
+    int contentWidth = max(1, contentRight - contentLeft);
+    int columnWidth = max(1, (contentWidth - (columnGap * 2)) / 3);
+
+    MoveControl(dialog, IDC_AMS_NAV_FRAME, navLeft, navTop, navWidth, max(1, clientHeight - (navTop * 2)));
+
+    int x1 = contentLeft;
+    int x2 = x1 + columnWidth + columnGap;
+    int x3 = x2 + columnWidth + columnGap;
+    MoveControl(dialog, IDC_AMS_LABEL_1, x1, labelTop, columnWidth, labelHeight);
+    MoveControl(dialog, IDC_AMS_CARD_NAME, x1, editTop, columnWidth, editHeight);
+    MoveControl(dialog, IDC_AMS_LABEL_2, x2, labelTop, columnWidth, labelHeight);
+    MoveControl(dialog, IDC_AMS_CARD_PASSWORD, x2, editTop, columnWidth, editHeight);
+    MoveControl(dialog, IDC_AMS_LABEL_3, x3, labelTop, columnWidth, labelHeight);
+    MoveControl(dialog, IDC_AMS_CARD_MONEY, x3, editTop, columnWidth, editHeight);
+
+    MoveControl(dialog, IDC_AMS_SUBMIT, contentLeft, submitTop, submitWidth, submitHeight);
+    MoveControl(dialog,
+                IDC_AMS_STATUS_TEXT,
+                contentLeft + submitWidth + statusLeftGap,
+                statusTop,
+                max(1, contentRight - (contentLeft + submitWidth + statusLeftGap)),
+                statusHeight);
+    MoveControl(dialog,
+                IDC_AMS_RESULT_LIST,
+                contentLeft,
+                listTop,
+                contentWidth,
+                max(1, clientHeight - listTop - bottomMargin));
 }
 
 static INT_PTR CALLBACK MainDialogProc(HWND dialog, UINT message, WPARAM wParam, LPARAM lParam)
@@ -130,14 +244,17 @@ static INT_PTR CALLBACK MainDialogProc(HWND dialog, UINT message, WPARAM wParam,
         SetWindowLongPtrW(dialog, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(initState));
         ListView_SetExtendedListViewStyle(initState->listHandle, LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_DOUBLEBUFFER);
         ResizeAndCenterDialog(dialog);
+        RECT client = {0};
+        GetClientRect(dialog, &client);
+        LayoutDialog(dialog, client.right - client.left, client.bottom - client.top);
         GuiSwitchMode(dialog, initState, GuiMode::AuthAdmin);
         return TRUE;
     }
     case WM_GETMINMAXINFO: {
         MINMAXINFO *mmi = reinterpret_cast<MINMAXINFO *>(lParam);
-        RECT minRect = {0, 0, 430, 280};
-        MapDialogRect(dialog, &minRect);
-        AdjustWindowRectEx(&minRect, static_cast<DWORD>(GetWindowLongPtrW(dialog, GWL_STYLE)), FALSE, static_cast<DWORD>(GetWindowLongPtrW(dialog, GWL_EXSTYLE)));
+        RECT minRect = WindowRectForClientSize(dialog,
+                                               DialogUnitToPixelX(dialog, kMinClientWidthDlu),
+                                               DialogUnitToPixelY(dialog, kMinClientHeightDlu));
         mmi->ptMinTrackSize.x = minRect.right - minRect.left;
         mmi->ptMinTrackSize.y = minRect.bottom - minRect.top;
         return TRUE;
@@ -146,17 +263,7 @@ static INT_PTR CALLBACK MainDialogProc(HWND dialog, UINT message, WPARAM wParam,
         int cx = LOWORD(lParam);
         int cy = HIWORD(lParam);
         if (cx == 0 || cy == 0) return TRUE;
-
-        RECT navFrame = {6, 6, 120, 268};
-        MapDialogRect(dialog, &navFrame);
-        navFrame.bottom = cy - navFrame.top;
-        SetWindowPos(GetDlgItem(dialog, IDC_AMS_NAV_FRAME), nullptr, navFrame.left, navFrame.top, navFrame.right - navFrame.left, navFrame.bottom - navFrame.top, SWP_NOZORDER);
-
-        RECT listBase = {140, 110, 430, 150};
-        MapDialogRect(dialog, &listBase);
-
-        SetWindowPos(GetDlgItem(dialog, IDC_AMS_RESULT_LIST), nullptr, listBase.left, listBase.top, cx - listBase.left - navFrame.left, cy - listBase.top - navFrame.top, SWP_NOZORDER);
-
+        LayoutDialog(dialog, cx, cy);
         return TRUE;
     }
     case WM_COMMAND:
