@@ -24,6 +24,7 @@
 #define IDC_AMS_LABEL_1 5301
 #define IDC_AMS_LABEL_2 5302
 #define IDC_AMS_LABEL_3 5303
+#define IDC_AMS_NAV_FRAME 5304
 
 #ifndef IDC_STATIC
 #define IDC_STATIC (-1)
