@@ -10,6 +10,7 @@ enum class GuiMode {
     AuthUserLogin,
     AuthRegister,
     AdminQuery,
+    AdminFuzzyQuery,
     AdminAdvancedQuery,
     AdminStop,
     AdminRecharge,

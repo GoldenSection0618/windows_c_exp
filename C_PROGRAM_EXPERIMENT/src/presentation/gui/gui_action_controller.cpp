@@ -143,6 +143,42 @@ void GuiExecuteSubmit(HWND dialog, GuiState *state)
         }
         break;
     }
+    case GuiMode::AdminFuzzyQuery: {
+        Card *cards = nullptr;
+        size_t actualCount = 0;
+        size_t requiredCount = 0;
+
+        result = bizAdminQueryCardsByKeyword(&state->session,
+                                             text1.c_str(),
+                                             nullptr,
+                                             0,
+                                             &actualCount,
+                                             &requiredCount);
+        if (result == BIZ_OK) {
+            cards = static_cast<Card *>(malloc(requiredCount * sizeof(Card)));
+            if (cards == nullptr) {
+                result = BIZ_ERR_NO_MEMORY;
+            }
+        }
+        if (result == BIZ_OK) {
+            result = bizAdminQueryCardsByKeyword(&state->session,
+                                                 text1.c_str(),
+                                                 cards,
+                                                 requiredCount,
+                                                 &actualCount,
+                                                 &requiredCount);
+        }
+        if (result == BIZ_OK) {
+            GuiShowCards(state->listHandle, cards, actualCount);
+            SetStatus(dialog, L"模糊查询完成。结果数=" + std::to_wstring(actualCount) + L"。");
+        } else {
+            SetStatus(dialog, ErrorText(result));
+        }
+        if (cards != nullptr) {
+            free(cards);
+        }
+        break;
+    }
     case GuiMode::AdminAdvancedQuery: {
         CardQueryOption option = {};
         Card *cards = nullptr;

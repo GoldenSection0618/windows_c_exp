@@ -48,6 +48,20 @@ BizResult bizAdminQueryCard(const LoginSession *session, const char *cardNameInp
     return bizQueryCard(cardNameInput, queriedCard);
 }
 
+BizResult bizAdminQueryCardsByKeyword(const LoginSession *session,
+                                      const char *keywordInput,
+                                      Card *buffer,
+                                      size_t capacity,
+                                      size_t *actualCount,
+                                      size_t *requiredCount)
+{
+    if (!bizIsAdminSession(session)) {
+        return BIZ_ERR_SYSTEM;
+    }
+
+    return bizQueryCardsByKeyword(keywordInput, buffer, capacity, actualCount, requiredCount);
+}
+
 
 BizResult bizUserQueryBalance(const LoginSession *session, Card *queriedCard)
 {

@@ -73,6 +73,12 @@ BizResult bizUserRegister(const char *cardNameInput, const char *passwordInput, 
 BizResult bizUserLogin(const char *cardNameInput, const char *passwordInput, LoginSession *session);
 
 BizResult bizAdminQueryCard(const LoginSession *session, const char *cardNameInput, Card *queriedCard);
+BizResult bizAdminQueryCardsByKeyword(const LoginSession *session,
+                                      const char *keywordInput,
+                                      Card *buffer,
+                                      size_t capacity,
+                                      size_t *actualCount,
+                                      size_t *requiredCount);
 BizResult bizAdminStopBilling(const LoginSession *session,
                               const char *cardNameInput,
                               time_t requestTime,
