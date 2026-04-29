@@ -65,6 +65,10 @@ const char *bizGetMessage(BizResult result)
         return "该卡已注销，不能重复注销！";
     case BIZ_ERR_CARD_STATUS_INVALID_FOR_CANCEL:
         return "该卡正在上机，不能注销！";
+    case BIZ_ERR_CARD_CANCELED_FOR_LOGIN:
+        return "该卡已注销，不能登录";
+    case BIZ_ERR_CARD_ONLINE_FOR_LOGIN:
+        return "该卡正在上机";
     case BIZ_ERR_INVALID_TIME_RANGE:
         return "时间范围输入不合法！";
     case BIZ_ERR_BILLING_RECORD_NOT_FOUND:

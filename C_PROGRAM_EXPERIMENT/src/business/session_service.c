@@ -97,6 +97,13 @@ BizResult bizUserLogin(const char *cardNameInput, const char *passwordInput, Log
         return result == BIZ_ERR_INVALID_PASSWORD ? BIZ_ERR_WRONG_PASSWORD : result;
     }
 
+    if (card.nStatus == CARD_STATUS_CANCELED) {
+        return BIZ_ERR_CARD_CANCELED_FOR_LOGIN;
+    }
+    if (card.nStatus == CARD_STATUS_ONLINE) {
+        return BIZ_ERR_CARD_ONLINE_FOR_LOGIN;
+    }
+
     clearSession(session);
     session->role = LOGIN_ROLE_USER;
     session->loggedIn = 1;

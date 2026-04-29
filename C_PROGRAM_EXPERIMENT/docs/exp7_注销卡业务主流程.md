@@ -38,3 +38,9 @@
 - 注销成功后卡保持 `CARD_STATUS_CANCELED`
 - 不支持部分退款
 - 不修改 `tLast`、`nUseCount`、`nTotalUseCent`
+
+## 6. 测试用例补充（附修复 Bug）：
+创建用户 -> 登录成功 -> 注销 -> 再次登录必须失败。
+说明：
+- 新注销卡状态为 `CARD_STATUS_CANCELED (2)` 时会拦截登录，提示“该卡已注销，不能登录”。
+- 上机中的卡状态为 `CARD_STATUS_ONLINE (1)` 时会拦截普通登录，提示“该卡正在上机”。
