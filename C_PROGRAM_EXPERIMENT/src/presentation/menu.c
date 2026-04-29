@@ -1,5 +1,6 @@
 #include "menu.h"
 #include "business.h"
+#include "card_file_maintenance_ui.h"
 #include "card_ui.h"
 #include "common.h"
 
@@ -54,6 +55,7 @@ void outputMenu(void)
     printf("6. 退费\n");
     printf("7. 查询统计\n");
     printf("8. 注销卡\n");
+    printf("9. 卡数据文件维护\n");
     printf("0. 退出系统\n");
 }
 
@@ -101,7 +103,7 @@ int readMenuChoice(int *choice)
 
 void showMenuInputFormatError(void)
 {
-    printf("输入格式错误，请输入数字菜单编号（0~8）。\n");
+    printf("输入格式错误，请输入数字菜单编号（0~9）。\n");
 }
 
 void dispatchMenuChoice(int choice)
@@ -139,11 +141,15 @@ void dispatchMenuChoice(int choice)
         printf("你选择了：注销卡\n");
         handleCancelCardInteraction();
         break;
+    case 9:
+        printf("你选择了：卡数据文件维护\n");
+        handleCardFileMaintenanceInteraction();
+        break;
     case 0:
         printf("系统已退出。\n");
         break;
     default:
-        printf("无效菜单编号，请输入 0~8。\n");
+        printf("无效菜单编号，请输入 0~9。\n");
         break;
     }
 }
