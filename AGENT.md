@@ -46,6 +46,7 @@
 - 退费：只需要卡号和金额，不需要卡密码。
 - 高级查询：支持按卡状态筛选（全部/未上机/上机/已注销/低余额）、按多种方式排序（余额升降、使用次数降、累计消费降、最后使用时间降），可选低余额阈值过滤。
 - 营业额统计：输入 `YYYY-MM` 格式，按指定月份统计该月营业额。
+- 卡数据文件维护：健康检查 `cards.txt`（逐行校验字段/状态/时间/金额/重复/超长）、导出健康报告、手动备份到 `data/backup/`、从备份恢复。
 
 ## 工程结构
 
@@ -119,6 +120,7 @@ business_result.c       DataResult 到 BizResult 映射，以及错误文案
 billing_rule.c          计费规则与计费金额计算
 card_validator.c        卡号、密码、金额输入校验
 time_validator.c        时间字符串校验
+card_file_maintenance_service.c  卡数据文件健康检查、备份与恢复
 operation_log.c         操作日志
 ```
 
@@ -129,6 +131,12 @@ C_PROGRAM_EXPERIMENT/include/business.h
 ```
 
 注意：`business.h` 中同时保留了新 GUI 使用的 session/user/admin API 和旧控制台兼容 API。新 GUI 代码应优先调用 session/user/admin API，不应直接绕过登录态调用 legacy API。
+
+高级查询的类型定义和 API（`CardQueryFilterType`、`CardQuerySortType`、`CardQueryOption`、`bizQueryCardsAdvanced` 等）声明在独立的：
+
+```text
+C_PROGRAM_EXPERIMENT/include/card_query.h
+```
 
 ### 3. 数据层
 
@@ -145,6 +153,8 @@ repository.c             卡信息仓储
 billing_repository.c     计费记录仓储
 money_repository.c       充值/退费流水仓储
 data_file_utils.c        数据文件公共工具：换行清理、字段解析、时间转换、目录创建
+card_file_backup.c       卡文件备份到 data/backup/ 并从备份恢复
+card_file_health.c       逐行扫描 cards.txt，校验字段完整性并输出异常记录
 ```
 
 对应头文件在：
@@ -154,6 +164,9 @@ C_PROGRAM_EXPERIMENT/include/card_repository.h
 C_PROGRAM_EXPERIMENT/include/billing_repository.h
 C_PROGRAM_EXPERIMENT/include/money_repository.h
 C_PROGRAM_EXPERIMENT/include/data_file_utils.h
+C_PROGRAM_EXPERIMENT/include/card_file_backup.h
+C_PROGRAM_EXPERIMENT/include/card_file_health.h
+C_PROGRAM_EXPERIMENT/include/card_file_maintenance.h
 ```
 
 当前数据层基于文本文件和内存链表实现。注意：仓储内部维护全局链表状态，例如先 load 再 query/update 的隐式状态仍然存在。修改时应避免在业务层随意组合底层 `dataLoadXXX + dataQueryXXX`，优先使用业务层封装好的函数。
@@ -182,6 +195,8 @@ C_PROGRAM_EXPERIMENT/src/presentation/
 menu.c
 card_ui.c
 card_view.c
+card_query_view.c
+card_file_maintenance_ui.c
 ```
 
 控制台代码主要服务课程实验的传统交互方式。后续若主要维护 GUI，不要随意破坏控制台兼容 API。
@@ -286,7 +301,9 @@ bizCancelCard
 - 上机/下机：`billing_service.c`。
 - 充值/退费：`money_service.c`。
 - 注销卡：`cancel_service.c`。
+- 高级查询：`card_query_service.c`。
 - 营业额统计和消费记录查询：`statistics_service.c`。
+- 卡数据文件维护：`card_file_maintenance_service.c`。
 - 卡号密码认证：`card_auth.c`。
 
 不要把新功能重新塞回某一个大文件。新增业务功能时，先判断它属于哪个服务。

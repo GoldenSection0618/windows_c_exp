@@ -1,4 +1,5 @@
 #include "business.h"
+#include "card_file_maintenance_ui.h"
 #include "card_view.h"
 #include "menu.h"
 #include "platform.h"
@@ -26,6 +27,7 @@ static void showAdminMenu(void)
     printf("3. 充值\n");
     printf("4. 退费\n");
     printf("5. 营业额统计\n");
+    printf("6. 卡数据文件维护\n");
     printf("0. 退出登录\n");
 }
 
@@ -271,12 +273,15 @@ static void runAdminConsole(LoginSession *session)
         case 5:
             handleAdminStatistics(session);
             break;
+        case 6:
+            handleCardFileMaintenanceInteraction();
+            break;
         case 0:
             bizLogout(session);
             printf("已退出管理员登录。\n");
             break;
         default:
-            printf("无效管理员功能编号，请输入 0~5。\n");
+            printf("无效管理员功能编号，请输入 0~6。\n");
             break;
         }
         printf("\n");

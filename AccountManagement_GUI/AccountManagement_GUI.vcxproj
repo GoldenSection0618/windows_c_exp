@@ -186,10 +186,13 @@
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\card_validator.c" />
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\operation_log.c" />
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\time_validator.c" />
+    <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\card_file_maintenance_service.c" />
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\data\billing_repository.c" />
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\data\data_file_utils.c" />
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\data\money_repository.c" />
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\data\repository.c" />
+    <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\data\card_file_backup.c" />
+    <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\data\card_file_health.c" />
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\platform\platform.c" />
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_main.cpp" />
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\presentation\gui\gui_main_window_centered_wrapper.cpp" />
@@ -212,6 +215,9 @@
     <ClInclude Include="..\C_PROGRAM_EXPERIMENT\include\data_file_utils.h" />
     <ClInclude Include="..\C_PROGRAM_EXPERIMENT\src\business\business_internal.h" />
     <ClInclude Include="..\C_PROGRAM_EXPERIMENT\include\card_query.h" />
+    <ClInclude Include="..\C_PROGRAM_EXPERIMENT\include\card_file_backup.h" />
+    <ClInclude Include="..\C_PROGRAM_EXPERIMENT\include\card_file_health.h" />
+    <ClInclude Include="..\C_PROGRAM_EXPERIMENT\include\card_file_maintenance.h" />
     <ClInclude Include="..\C_PROGRAM_EXPERIMENT\include\card_repository.h" />
     <ClInclude Include="..\C_PROGRAM_EXPERIMENT\include\card_storage.h" />
     <ClInclude Include="..\C_PROGRAM_EXPERIMENT\include\card_storage_file.h" />
