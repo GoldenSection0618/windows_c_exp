@@ -1,5 +1,6 @@
 #include "business.h"
 #include "business_internal.h"
+#include "business_legacy.h"
 
 #include "card_repository.h"
 #include "card_storage_file.h"

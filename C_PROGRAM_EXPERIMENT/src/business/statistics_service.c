@@ -1,5 +1,6 @@
 #include "business.h"
 #include "business_internal.h"
+#include "business_legacy.h"
 
 #include "billing_query_repository.h"
 #include "card_validator.h"

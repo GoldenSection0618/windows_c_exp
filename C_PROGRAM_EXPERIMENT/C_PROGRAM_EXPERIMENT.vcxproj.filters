@@ -13,6 +13,8 @@
     <ClCompile Include="src\business\billing_service.c"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="src\business\business_result.c"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="src\business\session_service.c"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="src\business\admin_service.c"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="src\business\user_service.c"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="src\business\card_service.c"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="src\business\card_query_service.c"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="src\business\statistics_service.c"><Filter>Source Files</Filter></ClCompile>
@@ -46,6 +48,7 @@
     <ClInclude Include="include\billing_storage.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="include\billing_storage_file.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="include\business.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="include\business_legacy.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="include\data_file_utils.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="src\business\business_internal.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="include\card_query.h"><Filter>Header Files</Filter></ClInclude>

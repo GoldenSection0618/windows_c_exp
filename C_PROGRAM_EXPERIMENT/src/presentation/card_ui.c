@@ -1,6 +1,7 @@
 #include "card_ui.h"
 
 #include "business.h"
+#include "business_legacy.h"
 #include "card_query.h"
 #include "card_validator.h"
 #include "card_view.h"

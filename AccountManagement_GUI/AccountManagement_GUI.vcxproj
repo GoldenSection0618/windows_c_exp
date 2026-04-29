@@ -177,6 +177,8 @@
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\billing_service.c" />
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\business_result.c" />
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\session_service.c" />
+    <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\admin_service.c" />
+    <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\user_service.c" />
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\card_service.c" />
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\card_query_service.c" />
     <ClCompile Include="..\C_PROGRAM_EXPERIMENT\src\business\statistics_service.c" />
@@ -212,6 +214,7 @@
     <ClInclude Include="..\C_PROGRAM_EXPERIMENT\include\billing_storage.h" />
     <ClInclude Include="..\C_PROGRAM_EXPERIMENT\include\billing_storage_file.h" />
     <ClInclude Include="..\C_PROGRAM_EXPERIMENT\include\business.h" />
+    <ClInclude Include="..\C_PROGRAM_EXPERIMENT\include\business_legacy.h" />
     <ClInclude Include="..\C_PROGRAM_EXPERIMENT\include\data_file_utils.h" />
     <ClInclude Include="..\C_PROGRAM_EXPERIMENT\src\business\business_internal.h" />
     <ClInclude Include="..\C_PROGRAM_EXPERIMENT\include\card_query.h" />

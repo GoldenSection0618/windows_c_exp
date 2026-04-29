@@ -1,5 +1,6 @@
 #include "business.h"
 #include "business_internal.h"
+#include "business_legacy.h"
 
 #include "billing_repository.h"
 #include "billing_rule.h"

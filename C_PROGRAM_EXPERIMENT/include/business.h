@@ -124,42 +124,6 @@ BizResult bizQueryCardsByKeyword(const char *keywordInput,
                                  size_t *actualCount,
                                  size_t *requiredCount);
 const char *bizGetMessage(BizResult result);
-
-/* Legacy console/internal API. New GUI code should call the session/user/admin APIs above. */
-BizResult bizStartBilling(const char *cardNameInput,
-                          const char *passwordInput,
-                          time_t requestTime,
-                          LogonInfo *logonInfo);
-BizResult bizStopBilling(const char *cardNameInput,
-                         const char *passwordInput,
-                         time_t requestTime,
-                         SettleInfo *settleInfo);
-BizResult bizRecharge(const char *cardNameInput,
-                      const char *passwordInput,
-                      const char *amountInput,
-                      Money *rechargeRecord,
-                      Card *updatedCard);
-BizResult bizRefund(const char *cardNameInput,
-                    const char *passwordInput,
-                    Money *refundRecord,
-                    Card *updatedCard);
-BizResult bizRefundByAmount(const char *cardNameInput,
-                            const char *passwordInput,
-                            const char *amountInput,
-                            Money *refundRecord,
-                            Card *updatedCard);
-BizResult bizCancelCard(const char *cardNameInput,
-                        const char *passwordInput,
-                        Money *refundRecord,
-                        Card *updatedCard);
-BizResult bizQueryBillingsByCardName(const char *cardNameInput, BillingQueryResult *result);
-BizResult bizQueryBillingsByCardNameAndRange(const char *cardNameInput,
-                                             const char *startInput,
-                                             const char *endInput,
-                                             BillingQueryResult *result);
-void bizFreeBillingQueryResult(BillingQueryResult *result);
-BizResult bizGetBillingStatistics(const char *yearMonthInput, BillingStatistics *statistics);
-void bizStatistics(void);
 void bizShutdown(void);
 
 #ifdef __cplusplus

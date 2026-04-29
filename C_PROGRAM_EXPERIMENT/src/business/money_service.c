@@ -1,5 +1,6 @@
 #include "business.h"
 #include "business_internal.h"
+#include "business_legacy.h"
 
 #include "card_repository.h"
 #include "card_storage_file.h"
@@ -233,4 +234,3 @@ BizResult bizRefundByAmount(const char *cardNameInput,
     logOperation("退费");
     return BIZ_OK;
 }
-

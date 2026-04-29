@@ -94,214 +94,293 @@ void GuiLogoutToLogin(HWND dialog, GuiState *state)
 }
 
 
+static void HandleAdminLogin(HWND dialog, GuiState *state, const std::string &account, const std::string &password)
+{
+    BizResult result = bizAdminLogin(account.c_str(), password.c_str(), &state->session);
+    if (result == BIZ_OK) {
+        GuiSwitchMode(dialog, state, GuiMode::AdminQuery);
+        GuiShowMessageRow(state->listHandle, L"管理员登录成功。");
+    } else {
+        SetStatus(dialog, ErrorText(result));
+    }
+}
+
+
+static void HandleUserLogin(HWND dialog, GuiState *state, const std::string &cardName, const std::string &password)
+{
+    BizResult result = bizUserLogin(cardName.c_str(), password.c_str(), &state->session);
+    if (result == BIZ_OK) {
+        GuiSwitchMode(dialog, state, GuiMode::UserBalance);
+        GuiShowMessageRow(state->listHandle, L"用户登录成功。");
+    } else {
+        SetStatus(dialog, ErrorText(result));
+    }
+}
+
+
+static void HandleRegister(HWND dialog, GuiState *state, const std::string &cardName, const std::string &password)
+{
+    Card card = {};
+    BizResult result = bizUserRegister(cardName.c_str(), password.c_str(), &card);
+    if (result == BIZ_OK) {
+        MessageBoxW(dialog, L"注册成功！你已获得 100 元新手礼包。", L"Promotion", MB_OK | MB_ICONINFORMATION);
+        GuiShowCard(state->listHandle, card);
+        SetStatus(dialog, L"注册成功，可直接使用用户登录。");
+    } else {
+        SetStatus(dialog, ErrorText(result));
+    }
+}
+
+
+static void HandleAdminQuery(HWND dialog, GuiState *state, const std::string &cardName)
+{
+    Card card = {};
+    BizResult result = bizAdminQueryCard(&state->session, cardName.c_str(), &card);
+    if (result == BIZ_OK) {
+        GuiShowCard(state->listHandle, card);
+        SetStatus(dialog, L"查询完成。");
+    } else {
+        SetStatus(dialog, ErrorText(result));
+    }
+}
+
+
+static void HandleAdminFuzzyQuery(HWND dialog, GuiState *state, const std::string &keyword)
+{
+    Card *cards = nullptr;
+    size_t actualCount = 0;
+    size_t requiredCount = 0;
+
+    BizResult result = bizAdminQueryCardsByKeyword(&state->session,
+                                                   keyword.c_str(),
+                                                   nullptr,
+                                                   0,
+                                                   &actualCount,
+                                                   &requiredCount);
+    if (result == BIZ_OK) {
+        cards = static_cast<Card *>(malloc(requiredCount * sizeof(Card)));
+        if (cards == nullptr) {
+            result = BIZ_ERR_NO_MEMORY;
+        }
+    }
+    if (result == BIZ_OK) {
+        result = bizAdminQueryCardsByKeyword(&state->session,
+                                             keyword.c_str(),
+                                             cards,
+                                             requiredCount,
+                                             &actualCount,
+                                             &requiredCount);
+    }
+    if (result == BIZ_OK) {
+        GuiShowCards(state->listHandle, cards, actualCount);
+        SetStatus(dialog, L"模糊查询完成。结果数=" + std::to_wstring(actualCount) + L"。");
+    } else {
+        SetStatus(dialog, ErrorText(result));
+    }
+    if (cards != nullptr) {
+        free(cards);
+    }
+}
+
+
+static void HandleAdminAdvancedQuery(HWND dialog,
+                                     GuiState *state,
+                                     const std::string &filterText,
+                                     const std::string &sortText,
+                                     const std::string &limitText)
+{
+    CardQueryOption option = {};
+    Card *cards = nullptr;
+    size_t count = 0;
+    BizResult result = BuildAdvancedQueryOption(filterText, sortText, limitText, &option);
+    if (result == BIZ_OK) {
+        result = bizAdminQueryCardsAdvanced(&state->session, &option, &cards, &count);
+    }
+    if (result == BIZ_OK) {
+        GuiShowCards(state->listHandle, cards, count);
+        SetStatus(dialog,
+            L"高级查询完成。筛选=" + GuiUtf8ToWide(bizGetCardQueryFilterText(option.filterType)) +
+            L"；排序=" + GuiUtf8ToWide(bizGetCardQuerySortText(option.sortType)) +
+            L"；结果数=" + std::to_wstring(count) + L"。");
+    } else {
+        SetStatus(dialog, ErrorText(result));
+    }
+    if (cards != nullptr) {
+        bizFreeCardQueryResult(cards);
+    }
+}
+
+
+static void HandleAdminStop(HWND dialog, GuiState *state, const std::string &cardName)
+{
+    SettleInfo info = {};
+    BizResult result = bizAdminStopBilling(&state->session, cardName.c_str(), time(nullptr), &info);
+    if (result == BIZ_OK) {
+        GuiShowSettle(state->listHandle, info);
+        SetStatus(dialog, L"管理员下机成功。");
+    } else {
+        SetStatus(dialog, ErrorText(result));
+    }
+}
+
+
+static void HandleAdminMoney(HWND dialog, GuiState *state, const std::string &cardName, const std::string &amountText)
+{
+    Money money = {};
+    Card card = {};
+    BizResult result = BIZ_OK;
+    if (state->mode == GuiMode::AdminRecharge) {
+        result = bizAdminRecharge(&state->session, cardName.c_str(), amountText.c_str(), &money, &card);
+    } else {
+        result = bizAdminRefundByAmount(&state->session, cardName.c_str(), amountText.c_str(), &money, &card);
+    }
+    if (result == BIZ_OK) {
+        GuiShowMoney(state->listHandle, card, money, state->mode == GuiMode::AdminRecharge ? L"充值金额" : L"退费金额");
+        SetStatus(dialog, state->mode == GuiMode::AdminRecharge ? L"管理员充值成功。" : L"管理员退费成功。");
+    } else {
+        SetStatus(dialog, ErrorText(result));
+    }
+}
+
+
+static void HandleAdminStatistics(HWND dialog, GuiState *state, const std::string &yearMonthText)
+{
+    BillingStatistics statistics = {};
+    BizResult result = bizAdminGetBillingStatistics(&state->session, yearMonthText.c_str(), &statistics);
+    if (result == BIZ_OK) {
+        GuiShowStatistics(state->listHandle, statistics);
+        SetStatus(dialog, L"营业额统计完成。");
+    } else {
+        SetStatus(dialog, ErrorText(result));
+    }
+}
+
+
+static void HandleUserBalance(HWND dialog, GuiState *state)
+{
+    Card card = {};
+    BizResult result = bizUserQueryBalance(&state->session, &card);
+    if (result == BIZ_OK) {
+        GuiShowCard(state->listHandle, card);
+        SetStatus(dialog, L"余额查询完成。");
+    } else {
+        SetStatus(dialog, ErrorText(result));
+    }
+}
+
+
+static void HandleUserStart(HWND dialog, GuiState *state)
+{
+    LogonInfo info = {};
+    BizResult result = bizUserStartBilling(&state->session, time(nullptr), &info);
+    if (result == BIZ_OK) {
+        GuiShowLogon(state->listHandle, info);
+        SetStatus(dialog, L"上机成功。");
+    } else {
+        SetStatus(dialog, ErrorText(result));
+    }
+}
+
+
+static void HandleUserStop(HWND dialog, GuiState *state)
+{
+    SettleInfo info = {};
+    BizResult result = bizUserStopBilling(&state->session, time(nullptr), &info);
+    if (result == BIZ_OK) {
+        GuiShowSettle(state->listHandle, info);
+        SetStatus(dialog, L"下机成功。");
+    } else {
+        SetStatus(dialog, ErrorText(result));
+    }
+}
+
+
+static void HandleUserMoney(HWND dialog, GuiState *state, const std::string &amountText)
+{
+    Money money = {};
+    Card card = {};
+    BizResult result = BIZ_OK;
+    if (state->mode == GuiMode::UserRecharge) {
+        result = bizUserRecharge(&state->session, amountText.c_str(), &money, &card);
+    } else {
+        result = bizUserRefundByAmount(&state->session, amountText.c_str(), &money, &card);
+    }
+    if (result == BIZ_OK) {
+        GuiShowMoney(state->listHandle, card, money, state->mode == GuiMode::UserRecharge ? L"充值金额" : L"退费金额");
+        SetStatus(dialog, state->mode == GuiMode::UserRecharge ? L"充值成功。" : L"退费成功。");
+    } else {
+        SetStatus(dialog, ErrorText(result));
+    }
+}
+
+
+static void HandleUserCancel(HWND dialog, GuiState *state, const std::string &cardName, const std::string &password)
+{
+    Money money = {};
+    Card card = {};
+    BizResult result = bizUserCancelCardWithPassword(&state->session, cardName.c_str(), password.c_str(), &money, &card);
+    if (result == BIZ_OK) {
+        GuiShowMoney(state->listHandle, card, money, L"退款金额");
+        MessageBoxW(dialog, L"注销卡成功，当前用户已退出登录。", L"注销卡", MB_OK | MB_ICONINFORMATION);
+        bizLogout(&state->session);
+        GuiSwitchMode(dialog, state, GuiMode::AuthAdmin);
+    } else {
+        SetStatus(dialog, ErrorText(result));
+    }
+}
+
+
 void GuiExecuteSubmit(HWND dialog, GuiState *state)
 {
     std::string text1 = GuiWideToUtf8(ReadText(dialog, IDC_AMS_CARD_NAME));
     std::string text2 = GuiWideToUtf8(ReadText(dialog, IDC_AMS_CARD_PASSWORD));
     std::string text3 = GuiWideToUtf8(ReadText(dialog, IDC_AMS_CARD_MONEY));
-    BizResult result = BIZ_OK;
 
     switch (state->mode) {
     case GuiMode::AuthAdmin:
-        result = bizAdminLogin(text1.c_str(), text2.c_str(), &state->session);
-        if (result == BIZ_OK) {
-            GuiSwitchMode(dialog, state, GuiMode::AdminQuery);
-            GuiShowMessageRow(state->listHandle, L"管理员登录成功。");
-        } else {
-            SetStatus(dialog, ErrorText(result));
-        }
+        HandleAdminLogin(dialog, state, text1, text2);
         break;
     case GuiMode::AuthUserLogin:
-        result = bizUserLogin(text1.c_str(), text2.c_str(), &state->session);
-        if (result == BIZ_OK) {
-            GuiSwitchMode(dialog, state, GuiMode::UserBalance);
-            GuiShowMessageRow(state->listHandle, L"用户登录成功。");
-        } else {
-            SetStatus(dialog, ErrorText(result));
-        }
+        HandleUserLogin(dialog, state, text1, text2);
         break;
-    case GuiMode::AuthRegister: {
-        Card card = {};
-        result = bizUserRegister(text1.c_str(), text2.c_str(), &card);
-        if (result == BIZ_OK) {
-            MessageBoxW(dialog, L"注册成功！你已获得 100 元新手礼包。", L"Promotion", MB_OK | MB_ICONINFORMATION);
-            GuiShowCard(state->listHandle, card);
-            SetStatus(dialog, L"注册成功，可直接使用用户登录。");
-        } else {
-            SetStatus(dialog, ErrorText(result));
-        }
+    case GuiMode::AuthRegister:
+        HandleRegister(dialog, state, text1, text2);
         break;
-    }
-    case GuiMode::AdminQuery: {
-        Card card = {};
-        result = bizAdminQueryCard(&state->session, text1.c_str(), &card);
-        if (result == BIZ_OK) {
-            GuiShowCard(state->listHandle, card);
-            SetStatus(dialog, L"查询完成。");
-        } else {
-            SetStatus(dialog, ErrorText(result));
-        }
+    case GuiMode::AdminQuery:
+        HandleAdminQuery(dialog, state, text1);
         break;
-    }
-    case GuiMode::AdminFuzzyQuery: {
-        Card *cards = nullptr;
-        size_t actualCount = 0;
-        size_t requiredCount = 0;
-
-        result = bizAdminQueryCardsByKeyword(&state->session,
-                                             text1.c_str(),
-                                             nullptr,
-                                             0,
-                                             &actualCount,
-                                             &requiredCount);
-        if (result == BIZ_OK) {
-            cards = static_cast<Card *>(malloc(requiredCount * sizeof(Card)));
-            if (cards == nullptr) {
-                result = BIZ_ERR_NO_MEMORY;
-            }
-        }
-        if (result == BIZ_OK) {
-            result = bizAdminQueryCardsByKeyword(&state->session,
-                                                 text1.c_str(),
-                                                 cards,
-                                                 requiredCount,
-                                                 &actualCount,
-                                                 &requiredCount);
-        }
-        if (result == BIZ_OK) {
-            GuiShowCards(state->listHandle, cards, actualCount);
-            SetStatus(dialog, L"模糊查询完成。结果数=" + std::to_wstring(actualCount) + L"。");
-        } else {
-            SetStatus(dialog, ErrorText(result));
-        }
-        if (cards != nullptr) {
-            free(cards);
-        }
+    case GuiMode::AdminFuzzyQuery:
+        HandleAdminFuzzyQuery(dialog, state, text1);
         break;
-    }
-    case GuiMode::AdminAdvancedQuery: {
-        CardQueryOption option = {};
-        Card *cards = nullptr;
-        size_t count = 0;
-        result = BuildAdvancedQueryOption(text1, text2, text3, &option);
-        if (result == BIZ_OK) {
-            result = bizAdminQueryCardsAdvanced(&state->session, &option, &cards, &count);
-        }
-        if (result == BIZ_OK) {
-            GuiShowCards(state->listHandle, cards, count);
-            SetStatus(dialog,
-                L"高级查询完成。筛选=" + GuiUtf8ToWide(bizGetCardQueryFilterText(option.filterType)) +
-                L"；排序=" + GuiUtf8ToWide(bizGetCardQuerySortText(option.sortType)) +
-                L"；结果数=" + std::to_wstring(count) + L"。");
-            bizFreeCardQueryResult(cards);
-        } else {
-            SetStatus(dialog, ErrorText(result));
-        }
+    case GuiMode::AdminAdvancedQuery:
+        HandleAdminAdvancedQuery(dialog, state, text1, text2, text3);
         break;
-    }
-    case GuiMode::AdminStop: {
-        SettleInfo info = {};
-        result = bizAdminStopBilling(&state->session, text1.c_str(), time(nullptr), &info);
-        if (result == BIZ_OK) {
-            GuiShowSettle(state->listHandle, info);
-            SetStatus(dialog, L"管理员下机成功。");
-        } else {
-            SetStatus(dialog, ErrorText(result));
-        }
+    case GuiMode::AdminStop:
+        HandleAdminStop(dialog, state, text1);
         break;
-    }
     case GuiMode::AdminRecharge:
-    case GuiMode::AdminRefund: {
-        Money money = {};
-        Card card = {};
-        if (state->mode == GuiMode::AdminRecharge) {
-            result = bizAdminRecharge(&state->session, text1.c_str(), text3.c_str(), &money, &card);
-        } else {
-            result = bizAdminRefundByAmount(&state->session, text1.c_str(), text3.c_str(), &money, &card);
-        }
-        if (result == BIZ_OK) {
-            GuiShowMoney(state->listHandle, card, money, state->mode == GuiMode::AdminRecharge ? L"充值金额" : L"退费金额");
-            SetStatus(dialog, state->mode == GuiMode::AdminRecharge ? L"管理员充值成功。" : L"管理员退费成功。");
-        } else {
-            SetStatus(dialog, ErrorText(result));
-        }
+    case GuiMode::AdminRefund:
+        HandleAdminMoney(dialog, state, text1, text3);
         break;
-    }
-    case GuiMode::AdminStatistics: {
-        BillingStatistics statistics = {};
-        result = bizAdminGetBillingStatistics(&state->session, text1.c_str(), &statistics);
-        if (result == BIZ_OK) {
-            GuiShowStatistics(state->listHandle, statistics);
-            SetStatus(dialog, L"营业额统计完成。");
-        } else {
-            SetStatus(dialog, ErrorText(result));
-        }
+    case GuiMode::AdminStatistics:
+        HandleAdminStatistics(dialog, state, text1);
         break;
-    }
-    case GuiMode::UserBalance: {
-        Card card = {};
-        result = bizUserQueryBalance(&state->session, &card);
-        if (result == BIZ_OK) {
-            GuiShowCard(state->listHandle, card);
-            SetStatus(dialog, L"余额查询完成。");
-        } else {
-            SetStatus(dialog, ErrorText(result));
-        }
+    case GuiMode::UserBalance:
+        HandleUserBalance(dialog, state);
         break;
-    }
-    case GuiMode::UserStart: {
-        LogonInfo info = {};
-        result = bizUserStartBilling(&state->session, time(nullptr), &info);
-        if (result == BIZ_OK) {
-            GuiShowLogon(state->listHandle, info);
-            SetStatus(dialog, L"上机成功。");
-        } else {
-            SetStatus(dialog, ErrorText(result));
-        }
+    case GuiMode::UserStart:
+        HandleUserStart(dialog, state);
         break;
-    }
-    case GuiMode::UserStop: {
-        SettleInfo info = {};
-        result = bizUserStopBilling(&state->session, time(nullptr), &info);
-        if (result == BIZ_OK) {
-            GuiShowSettle(state->listHandle, info);
-            SetStatus(dialog, L"下机成功。");
-        } else {
-            SetStatus(dialog, ErrorText(result));
-        }
+    case GuiMode::UserStop:
+        HandleUserStop(dialog, state);
         break;
-    }
     case GuiMode::UserRecharge:
-    case GuiMode::UserRefund: {
-        Money money = {};
-        Card card = {};
-        if (state->mode == GuiMode::UserRecharge) {
-            result = bizUserRecharge(&state->session, text1.c_str(), &money, &card);
-        } else {
-            result = bizUserRefundByAmount(&state->session, text1.c_str(), &money, &card);
-        }
-        if (result == BIZ_OK) {
-            GuiShowMoney(state->listHandle, card, money, state->mode == GuiMode::UserRecharge ? L"充值金额" : L"退费金额");
-            SetStatus(dialog, state->mode == GuiMode::UserRecharge ? L"充值成功。" : L"退费成功。");
-        } else {
-            SetStatus(dialog, ErrorText(result));
-        }
+    case GuiMode::UserRefund:
+        HandleUserMoney(dialog, state, text1);
         break;
-    }
-    case GuiMode::UserCancel: {
-        Money money = {};
-        Card card = {};
-        result = bizUserCancelCardWithPassword(&state->session, text1.c_str(), text2.c_str(), &money, &card);
-        if (result == BIZ_OK) {
-            GuiShowMoney(state->listHandle, card, money, L"退款金额");
-            MessageBoxW(dialog, L"注销卡成功，当前用户已退出登录。", L"注销卡", MB_OK | MB_ICONINFORMATION);
-            bizLogout(&state->session);
-            GuiSwitchMode(dialog, state, GuiMode::AuthAdmin);
-        } else {
-            SetStatus(dialog, ErrorText(result));
-        }
+    case GuiMode::UserCancel:
+        HandleUserCancel(dialog, state, text1, text2);
         break;
-    }
     }
 }
 
