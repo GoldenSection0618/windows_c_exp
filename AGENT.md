@@ -113,7 +113,9 @@ billing_service.c       上机、下机核心逻辑
 money_service.c         充值、退费逻辑
 card_service.c          开卡、注册、查卡、模糊查询、余额查询
 card_query_service.c    管理员高级查询：按状态筛选、排序、低余额查询
-session_service.c       登录态、管理员登录、用户登录、用户/管理员包装 API
+session_service.c       登录态、管理员登录、用户登录
+admin_service.c         管理员包装操作（下机、充值、退费），校验登录态后调用 legacy API
+user_service.c          用户包装操作（上机、下机、充值、退费），校验登录态后调用 legacy API
 statistics_service.c    消费记录查询、YYYY-MM 月营业额统计
 cancel_service.c        注销卡逻辑
 card_auth.c             卡号/密码认证与卡加载辅助函数
@@ -131,7 +133,15 @@ operation_log.c         操作日志
 C_PROGRAM_EXPERIMENT/include/business.h
 ```
 
-注意：`business.h` 中同时保留了新 GUI 使用的 session/user/admin API 和旧控制台兼容 API。新 GUI 代码应优先调用 session/user/admin API，不应直接绕过登录态调用 legacy API。
+`business.h` 只暴露 session/user/admin API 和少量共享 API（`bizAddCard`、`bizQueryCard` 等）。新 GUI 代码应优先调用 session/user/admin API，不应直接绕过登录态。
+
+旧控制台兼容 API（`bizStartBilling`、`bizStopBilling`、`bizRecharge` 等）已分离到独立的 legacy 头文件，仅供控制台和业务内部使用：
+
+```text
+C_PROGRAM_EXPERIMENT/include/business_legacy.h
+```
+
+GUI 代码不应引用 `business_legacy.h`。
 
 高级查询的类型定义和 API（`CardQueryFilterType`、`CardQuerySortType`、`CardQueryOption`、`bizQueryCardsAdvanced` 等）声明在独立的：
 
@@ -303,6 +313,8 @@ bizCancelCard
 
 - 卡相关：`card_service.c`。
 - 登录态和角色相关：`session_service.c`。
+- 管理员包装操作（下机/充值/退费）：`admin_service.c`。
+- 用户包装操作（上机/下机/充值/退费）：`user_service.c`。
 - 上机/下机：`billing_service.c`。
 - 充值/退费：`money_service.c`。
 - 注销卡：`cancel_service.c`。
@@ -327,10 +339,9 @@ bizCancelCard
 
 以下问题存在，但继续修改的边际收益已经不高：
 
-1. `business.h` 仍是较大的公共头文件，同时暴露新旧 API。
-2. 数据层仍用全局链表作为内部缓存状态。
-3. 两个 Visual Studio 工程仍重复编译部分 core/business/data 源码。
-4. `AccountManagement_GUI` 尚未通过单独 Core static library 复用公共代码。
+1. 数据层仍用全局链表作为内部缓存状态。
+2. 两个 Visual Studio 工程仍重复编译部分 core/business/data 源码。
+3. `AccountManagement_GUI` 尚未通过单独 Core static library 复用公共代码。
 
 这些问题不是当前主要维护风险。除非用户明确要求架构重构，否则不要为了“更干净”而继续大规模修改。
 
