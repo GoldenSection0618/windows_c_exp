@@ -6,7 +6,7 @@
 
 #define INPUT_BUF_SIZE 128
 #define MENU_MIN 0
-#define MENU_MAX 8
+#define MENU_MAX 9
 #define CARD_DATA_FILE_PATH "data/cards.txt"
 #define BILLING_DATA_FILE_PATH "data/billings.txt"
 #define MONEY_DATA_FILE_PATH "data/money.txt"
