@@ -47,7 +47,7 @@
 - 退费：只需要卡号和金额，不需要卡密码。
 - 高级查询：支持按卡状态筛选（全部/未上机/上机/已注销/低余额）、按多种方式排序（余额升降、使用次数降、累计消费降、最后使用时间降），可选低余额阈值过滤。
 - 营业额统计：输入 `YYYY-MM` 格式，按指定月份统计该月营业额。
-- 卡数据文件维护：健康检查 `cards.txt`（逐行校验字段/状态/时间/金额/重复/超长）、导出健康报告、手动备份到 `data/backup/`、从备份恢复。
+- 卡数据文件维护：健康检查 `cards.txt`（逐行校验字段/状态/时间/金额/重复/超长）、导出健康报告、手动备份到 `data/backup/`、从备份恢复。GUI 中通过管理员"文件维护"导航进入，支持 1 健康检查 / 2 导出报告 / 3 手动备份 / 4 从备份恢复四种操作。
 
 ## 工程结构
 
@@ -127,6 +127,8 @@ card_file_maintenance_service.c  卡数据文件健康检查、备份与恢复
 operation_log.c         操作日志
 ```
 
+业务层内部头文件 `business_internal.h`（位于 `src/business/`，非 `include/`）声明了业务层内部共享函数（如 `mapDataResult`、`bizLoadCardByCredentialInternal`），被多个业务 `.c` 文件引用，不对外暴露。
+
 业务层公开接口集中在：
 
 ```text
@@ -177,6 +179,7 @@ C_PROGRAM_EXPERIMENT/include/money_repository.h
 C_PROGRAM_EXPERIMENT/include/data_file_utils.h
 C_PROGRAM_EXPERIMENT/include/card_file_backup.h
 C_PROGRAM_EXPERIMENT/include/card_file_health.h
+C_PROGRAM_EXPERIMENT/include/billing_query_repository.h
 C_PROGRAM_EXPERIMENT/include/card_file_maintenance.h
 ```
 
@@ -242,6 +245,36 @@ gui_main_window_centered_wrapper.cpp
 
 gui_main_window.cpp
   旧工程残留/兼容空壳，不应再作为主窗口实现依据。
+
+gui_action_controller.cpp
+  提交按钮后的 GuiMode 路由分发（switch dispatch），委托给对应的 action handler。
+
+gui_auth_actions.cpp / gui_auth_actions.h
+  认证操作 handler：管理员登录、用户登录、注册。
+
+gui_admin_actions.cpp / gui_admin_actions.h
+  管理员操作 handler：查询卡、模糊查询、高级查询、下机、充值、退费、营业额统计、卡文件维护。
+
+gui_user_actions.cpp / gui_user_actions.h
+  用户操作 handler：查余额、上机、下机、充值、退费、注销卡。
+
+gui_action_utils.cpp / gui_action_utils.h
+  action 公共工具函数。
+
+gui_mode_config.cpp
+  负责不同 GuiMode 下的按钮标签、输入框显隐、密码掩码、标题和状态文案配置。
+
+gui_result_view.cpp
+  负责 ListView 表格渲染。
+
+gui_utils.cpp / gui_utils.h
+  GUI 通用工具函数（UTF-8/UTF-16 转换等）。
+
+gui_resource.rc / gui_resource.h
+  Win32 对话框资源和控件 ID 定义。
+
+app.manifest
+  Windows 应用清单（DPI awareness 等）。
 ```
 
 修改 GUI 时，以 `AccountManagement_GUI` 的运行效果为准。
@@ -303,7 +336,11 @@ bizCancelCard
 
 - 修改窗口生命周期、消息分发：看 `gui_main_window_core.cpp`。
 - 修改按钮显示、输入框显示、模式文案：看 `gui_mode_config.cpp`。
-- 修改提交按钮后的业务调用：看 `gui_action_controller.cpp`。
+- 修改提交按钮后的路由分发：看 `gui_action_controller.cpp`。
+- 修改认证操作（管理员登录、用户登录、注册）：看 `gui_auth_actions.cpp`。
+- 修改管理员操作（查卡、模糊查询、高级查询、下机、充值、退费、统计、文件维护）：看 `gui_admin_actions.cpp`。
+- 修改用户操作（查余额、上机、下机、充值、退费、注销）：看 `gui_user_actions.cpp`。
+- 修改 action 公共工具（文本读取、状态设置、错误文案、高级查询参数构建）：看 `gui_action_utils.cpp`。
 - 修改结果表格显示：看 `gui_result_view.cpp`。
 - 修改控件 ID 或资源布局：看 `gui_resource.rc` 和 `gui_resource.h`。
 
