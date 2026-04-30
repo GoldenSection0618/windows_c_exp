@@ -1,3 +1,8 @@
+/*
+ * 文件：gui_mode_config.cpp
+ * 作用：集中配置不同 GuiMode 下的导航按钮、输入框、提交按钮和状态提示。
+ * 边界：本文件只描述界面状态，不调用业务层 API，也不处理提交事件。
+ */
 #include "gui_main_window_internal.h"
 
 #include "gui_resource.h"
@@ -15,7 +20,6 @@ static void SetStatus(HWND dialog, const std::wstring &text)
     SetText(dialog, IDC_AMS_STATUS_TEXT, text.c_str());
 }
 
-
 static void SetControlVisible(HWND dialog, int controlId, bool visible)
 {
     HWND control = GetDlgItem(dialog, controlId);
@@ -24,14 +28,12 @@ static void SetControlVisible(HWND dialog, int controlId, bool visible)
     }
 }
 
-
 static void SetPasswordMask(HWND dialog, bool enabled)
 {
     HWND edit = GetDlgItem(dialog, IDC_AMS_CARD_PASSWORD);
     SendMessageW(edit, EM_SETPASSWORDCHAR, enabled ? L'*' : 0, 0);
     InvalidateRect(edit, nullptr, TRUE);
 }
-
 
 static void ClearInputs(HWND dialog)
 {
@@ -40,19 +42,20 @@ static void ClearInputs(HWND dialog)
     SetText(dialog, IDC_AMS_CARD_MONEY, L"");
 }
 
-
 static void SetNavButton(HWND dialog, int controlId, const wchar_t *text, bool visible)
 {
     SetText(dialog, controlId, text);
     SetControlVisible(dialog, controlId, visible);
 }
 
+/* 单个导航按钮的显示配置。 */
 struct NavButtonConfig {
     int controlId;
     const wchar_t *text;
     bool visible;
 };
 
+/* 三个通用输入框的标签、显隐和密码掩码配置。 */
 struct InputConfig {
     const wchar_t *label1;
     bool showInput1;
@@ -63,6 +66,7 @@ struct InputConfig {
     bool passwordMask;
 };
 
+/* GuiMode 的完整界面配置，用于避免 handler 中散落控件状态逻辑。 */
 struct ModeConfig {
     GuiMode mode;
     const wchar_t *windowTitle;
@@ -115,6 +119,7 @@ static const NavButtonConfig kUserNav[] = {
     {0, nullptr, false},
 };
 
+/* 每个 GuiMode 对应一组界面配置，切换模式时统一应用。 */
 static const ModeConfig kModeConfigs[] = {
     {GuiMode::AuthAdmin, L"计费管理系统 - 登录", kAuthNav, {L"管理员账号", true, L"管理员密码", true, L"", false, true}, L"登录", L"", false},
     {GuiMode::AuthUserLogin, L"计费管理系统 - 登录", kAuthNav, {L"卡号", true, L"密码", true, L"", false, true}, L"登录", L"用户登录：输入卡号和密码。", false},
@@ -155,7 +160,7 @@ static void ApplyNavButtons(HWND dialog, const NavButtonConfig *navButtons)
     }
 }
 
-
+/* 设置三个通用输入框的标签、显隐和密码掩码。 */
 static void ConfigureInput(HWND dialog,
                            const wchar_t *label1,
                            bool showInput1,
@@ -178,7 +183,10 @@ static void ConfigureInput(HWND dialog,
     SetPasswordMask(dialog, passwordMask);
 }
 
-
+/*
+ * 功能：切换 GUI 当前模式并应用对应界面配置。
+ * 边界：只更新控件状态和提示文本，不执行任何业务操作。
+ */
 void GuiSwitchMode(HWND dialog, GuiState *state, GuiMode mode)
 {
     const ModeConfig *config = FindModeConfig(mode);
