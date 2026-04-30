@@ -1,3 +1,8 @@
+/*
+ * 文件：gui_result_view.cpp
+ * 作用：负责将业务层返回的数据渲染到 Win32 ListView 表格中。
+ * 边界：本文件只做展示格式化，不发起业务调用，也不修改业务数据。
+ */
 #include "gui_main_window_internal.h"
 
 #include "gui_utils.h"
@@ -6,6 +11,7 @@
 #include <string>
 #include <vector>
 
+/* 清空 ListView 的全部列定义，供不同结果类型重新建表头。 */
 static void ClearListColumns(HWND listHandle)
 {
     int column = Header_GetItemCount(ListView_GetHeader(listHandle));
@@ -14,13 +20,12 @@ static void ClearListColumns(HWND listHandle)
     }
 }
 
-
+/* 清空 ListView 的行和列，恢复为可重新渲染状态。 */
 void GuiPrepareList(HWND listHandle)
 {
     ListView_DeleteAllItems(listHandle);
     ClearListColumns(listHandle);
 }
-
 
 static void AddColumn(HWND listHandle, int index, int width, const wchar_t *title)
 {
@@ -31,7 +36,6 @@ static void AddColumn(HWND listHandle, int index, int width, const wchar_t *titl
     column.pszText = const_cast<LPWSTR>(title);
     ListView_InsertColumn(listHandle, index, &column);
 }
-
 
 static void AddRow(HWND listHandle, int row, const std::vector<std::wstring> &values)
 {
@@ -50,7 +54,7 @@ static void AddRow(HWND listHandle, int row, const std::vector<std::wstring> &va
     }
 }
 
-
+/* 用单列表格显示提示信息或错误信息。 */
 void GuiShowMessageRow(HWND listHandle, const wchar_t *message)
 {
     GuiPrepareList(listHandle);
@@ -58,7 +62,7 @@ void GuiShowMessageRow(HWND listHandle, const wchar_t *message)
     AddRow(listHandle, 0, {message});
 }
 
-
+/* 显示单张卡的核心状态、余额和使用信息。 */
 void GuiShowCard(HWND listHandle, const Card &card)
 {
     GuiPrepareList(listHandle);
@@ -79,7 +83,7 @@ void GuiShowCard(HWND listHandle, const Card &card)
     });
 }
 
-
+/* 显示卡列表，供模糊查询和高级查询复用。 */
 void GuiShowCards(HWND listHandle, const Card *cards, size_t count)
 {
     GuiPrepareList(listHandle);
@@ -106,7 +110,7 @@ void GuiShowCards(HWND listHandle, const Card *cards, size_t count)
     }
 }
 
-
+/* 显示下机结算结果。 */
 void GuiShowSettle(HWND listHandle, const SettleInfo &info)
 {
     GuiPrepareList(listHandle);
@@ -124,7 +128,7 @@ void GuiShowSettle(HWND listHandle, const SettleInfo &info)
     });
 }
 
-
+/* 显示上机成功结果。 */
 void GuiShowLogon(HWND listHandle, const LogonInfo &info)
 {
     GuiPrepareList(listHandle);
@@ -138,7 +142,7 @@ void GuiShowLogon(HWND listHandle, const LogonInfo &info)
     });
 }
 
-
+/* 显示充值或退费结果，title 决定第二列表头。 */
 void GuiShowMoney(HWND listHandle, const Card &card, const Money &money, const wchar_t *title)
 {
     GuiPrepareList(listHandle);
@@ -152,7 +156,7 @@ void GuiShowMoney(HWND listHandle, const Card &card, const Money &money, const w
     });
 }
 
-
+/* 显示 YYYY-MM 月营业额统计结果。 */
 void GuiShowStatistics(HWND listHandle, const BillingStatistics &statistics)
 {
     GuiPrepareList(listHandle);
@@ -164,7 +168,7 @@ void GuiShowStatistics(HWND listHandle, const BillingStatistics &statistics)
     });
 }
 
-
+/* 显示 cards.txt 健康检查摘要和前 20 条异常。 */
 void GuiShowCardFileHealthResult(HWND listHandle, const CardFileMaintenanceResult &result)
 {
     GuiPrepareList(listHandle);
