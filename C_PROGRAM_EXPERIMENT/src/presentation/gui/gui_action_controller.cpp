@@ -1,3 +1,8 @@
+/*
+ * 文件：gui_action_controller.cpp
+ * 作用：根据当前 GuiMode 分发提交按钮事件，将界面输入委托给对应 action handler。
+ * 边界：本文件只做路由，不直接实现具体业务规则。
+ */
 #include "gui_main_window_internal.h"
 
 #include "gui_action_utils.h"
@@ -9,6 +14,10 @@
 
 #include <string>
 
+/*
+ * 功能：处理提交按钮点击事件。
+ * 流程：读取三个通用输入框，再按 GuiMode 分发到认证、管理员或用户 handler。
+ */
 void GuiExecuteSubmit(HWND dialog, GuiState *state)
 {
     std::string text1 = GuiWideToUtf8(GuiReadText(dialog, IDC_AMS_CARD_NAME));
